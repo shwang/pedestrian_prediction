@@ -1,0 +1,131 @@
+from unittest import TestCase
+import numpy as np
+
+from mdp import GridWorldMDP
+
+Actions = GridWorldMDP.Actions
+
+class TestGridWorldMDP(TestCase):
+    def test_state_coor_switching(self):
+        self.state_coor_helper(1, 1, 0, 0, 0)
+
+        self.state_coor_helper(2, 3, 0, 0, 0)
+        self.state_coor_helper(2, 3, 1, 0, 1)
+        self.state_coor_helper(2, 3, 2, 0, 2)
+        self.state_coor_helper(2, 3, 3, 1, 0)
+        self.state_coor_helper(2, 3, 4, 1, 1)
+        self.state_coor_helper(2, 3, 5, 1, 2)
+
+        self.state_coor_helper(1, 1, 0, 0, 0)
+        self.state_coor_helper(1, 3, 0, 0, 0)
+        self.state_coor_helper(1, 3, 1, 0, 1)
+        self.state_coor_helper(1, 3, 2, 0, 2)
+
+    class DummyMDP():
+        def __init__(self, rows, cols):
+            self.rows = rows
+            self.cols = cols
+
+    def state_coor_helper(self, rows, cols, s, r, c):
+        mdp = self.DummyMDP(rows, cols)
+        self.assertEqual((r, c), GridWorldMDP.state_to_coor(mdp, s))
+        self.assertEqual(s, GridWorldMDP.coor_to_state(mdp, r, c))
+
+    def test_num_states(self):
+        self.assertEqual(25, GridWorldMDP(5, 5, {}).S)
+        self.assertEqual(1, GridWorldMDP(1, 1, {}).S)
+        self.assertEqual(3, GridWorldMDP(1, 3, {}).S)
+        self.assertEqual(10, GridWorldMDP(5, 2, {}).S)
+
+    def test_num_actions(self):
+        self.assertEqual(len(GridWorldMDP.Actions), GridWorldMDP(5, 5, {}).A)
+        self.assertEqual(len(GridWorldMDP.Actions), GridWorldMDP(1, 1, {}).A)
+        self.assertEqual(len(GridWorldMDP.Actions), GridWorldMDP(1, 3, {}).A)
+        self.assertEqual(len(GridWorldMDP.Actions), GridWorldMDP(5, 2, {}).A)
+
+    def assert_illegality(self, mdp, r, c, illegal_list):
+        s = mdp.coor_to_state(r, c)
+        for a in list(Actions):
+            should_be_illegal = a in illegal_list
+            s_prime, illegal = mdp.transition(s, a, alert_illegal=True)
+            self.assertEqual(should_be_illegal, illegal, a)
+            if should_be_illegal:
+                self.assertEqual(s, s_prime)
+
+    def test_transitions_illegal(self):
+        g = GridWorldMDP(1, 1, {})
+        self.assert_illegality(g, 0, 0, set(Actions) - {Actions.WAIT})
+
+        g = GridWorldMDP(3, 3, {})
+        illegal = [Actions.UP, Actions.LEFT, Actions.UP_LEFT, Actions.UP_RIGHT,
+                    Actions.DOWN_LEFT]
+        self.assert_illegality(g, 0, 0, illegal)
+        self.assert_illegality(g, 1, 1, {})
+        self.assert_illegality(g, 1, 2,
+                [Actions.RIGHT, Actions.UP_RIGHT, Actions.DOWN_RIGHT])
+        self.assert_illegality(g, 2, 2,
+                set(Actions) - {Actions.LEFT, Actions.UP, Actions.UP_LEFT, Actions.WAIT})
+
+    def assert_transition(self, mdp, r, c, a, r_prime, c_prime):
+        s = mdp.coor_to_state(r, c)
+        s_prime = mdp.transition(s, a)
+        self.assertEqual((r_prime, c_prime), mdp.state_to_coor(s_prime))
+
+    def test_transitions(self):
+        g = GridWorldMDP(3, 3, {})
+        self.assert_transition(g, 0, 0, Actions.DOWN, 1, 0)
+        self.assert_transition(g, 0, 0, Actions.RIGHT, 0, 1)
+        self.assert_transition(g, 0, 0, Actions.DOWN_RIGHT, 1, 1)
+        self.assert_transition(g, 0, 0, Actions.WAIT, 0, 0)
+
+        self.assert_transition(g, 1, 1, Actions.UP, 0, 1)
+        self.assert_transition(g, 1, 1, Actions.DOWN, 2, 1)
+        self.assert_transition(g, 1, 1, Actions.LEFT, 1, 0)
+        self.assert_transition(g, 1, 1, Actions.RIGHT, 1, 2)
+        self.assert_transition(g, 1, 1, Actions.UP_LEFT, 0, 0)
+        self.assert_transition(g, 1, 1, Actions.UP_RIGHT, 0, 2)
+        self.assert_transition(g, 1, 1, Actions.DOWN_LEFT, 2, 0)
+        self.assert_transition(g, 1, 1, Actions.DOWN_RIGHT, 2, 2)
+        self.assert_transition(g, 1, 1, Actions.WAIT, 1, 1)
+
+    def assert_reward(self, mdp, r, c, a, reward):
+        s = mdp.coor_to_state(r, c)
+        self.assertEqual(reward, mdp.rewards[s, a])
+
+    def test_rewards_illegal(self):
+        ni = float('-inf')
+
+        g = GridWorldMDP(3, 3, {})
+        self.assert_reward(g, 0, 0, Actions.LEFT, ni)
+        self.assert_reward(g, 0, 0, Actions.UP, ni)
+        self.assert_reward(g, 0, 0, Actions.UP_LEFT, ni)
+        self.assert_reward(g, 0, 0, Actions.UP_RIGHT, ni)
+
+        g = GridWorldMDP(3, 3, {(0, 0): 1})
+        self.assert_reward(g, 0, 0, Actions.LEFT, ni)
+        self.assert_reward(g, 0, 0, Actions.UP, ni)
+        self.assert_reward(g, 0, 0, Actions.UP_LEFT, ni)
+        self.assert_reward(g, 0, 0, Actions.UP_RIGHT, ni)
+
+    def test_rewards(self):
+        g = GridWorldMDP(3, 3, {(0, 0): -1, (0, 1): 1, (1, 1): 2, (1, 0): 3})
+        self.assert_reward(g, 0, 0, Actions.WAIT, 0)
+        self.assert_reward(g, 0, 0, Actions.RIGHT, 1)
+        self.assert_reward(g, 0, 0, Actions.DOWN_RIGHT, 2)
+        self.assert_reward(g, 0, 0, Actions.DOWN, 3)
+        self.assert_reward(g, 2, 2, Actions.UP_LEFT, 2)
+        self.assert_reward(g, 1, 1, Actions.UP_LEFT, -1)
+        self.assert_reward(g, 1, 0, Actions.UP, -1)
+
+    def test_rewards_defaults(self):
+        g = GridWorldMDP(3, 3, {(0, 0): -1, (0, 1): 1, (1, 1): 2, (1, 0): 3},
+                wait_reward=0.5, default_reward=1.5)
+        self.assert_reward(g, 0, 0, Actions.WAIT, 0.5)
+        self.assert_reward(g, 2, 2, Actions.WAIT, 0.5)
+        self.assert_reward(g, 0, 0, Actions.RIGHT, 1)
+        self.assert_reward(g, 0, 0, Actions.DOWN_RIGHT, 2)
+        self.assert_reward(g, 0, 0, Actions.DOWN, 3)
+        self.assert_reward(g, 2, 2, Actions.UP_LEFT, 2)
+        self.assert_reward(g, 1, 1, Actions.UP_LEFT, -1)
+        self.assert_reward(g, 1, 0, Actions.UP, -1)
+        self.assert_reward(g, 1, 1, Actions.DOWN_RIGHT, 1.5)
