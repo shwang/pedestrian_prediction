@@ -57,3 +57,19 @@ class TestBackwardsValueIter(TestCase):
         t.assert_allclose(backwards_value_iter(g, 0, max_iters=1), [0, -1, ni])
         V_2 = [np.log(1 + np.exp(-2)), np.log(2) - 1, -11]
         t.assert_allclose(backwards_value_iter(g, 0, max_iters=2), V_2)
+
+    def test_hardmax_value_iter(self):
+        g = GridWorldMDP(5, 1, {(4,0): -10}, default_reward=-1)
+        value = [0, -1, -2, -3, -13]
+        t.assert_allclose(backwards_value_iter(g, 0, max_iters=0, softmax=False),
+                [0, ni, ni, ni, ni])
+        t.assert_allclose(backwards_value_iter(g, 0, max_iters=1, softmax=False),
+                [0, -1, ni, ni, ni])
+        t.assert_allclose(backwards_value_iter(g, 0, max_iters=2, softmax=False),
+                [0, -1, -2, ni, ni])
+        t.assert_allclose(backwards_value_iter(g, 0, max_iters=3, softmax=False),
+                [0, -1, -2, -3, ni])
+        t.assert_allclose(backwards_value_iter(g, 0, max_iters=4, softmax=False),
+                [0, -1, -2, -3, -13])
+        t.assert_allclose(backwards_value_iter(g, 0, softmax=False),
+                [0, -1, -2, -3, -13])

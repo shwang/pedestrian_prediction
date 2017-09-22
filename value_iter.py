@@ -23,7 +23,8 @@ def _calc_max_update(V, V_prime):
 
     return max_update
 
-def backwards_value_iter(mdp, init_state, states=None, update_threshold=1e-7, max_iters=None):
+def backwards_value_iter(mdp, init_state, states=None, update_threshold=1e-7, max_iters=None,
+        softmax=True):
     """
     Approximate the softmax value of reaching various destination states, starting
     from a given initial state.
@@ -37,6 +38,8 @@ def backwards_value_iter(mdp, init_state, states=None, update_threshold=1e-7, ma
             received from taking action a at state s.
         transition [function]: The state transition function for the deterministic MDP.
             transition(s, a) returns the state that results from taking action a at state s.
+        states [list]: (optional) An ordered list of destination states to calculate
+            value for. By default, calculate the value of all states.
         update_threshold [float]: (optional) When the magnitude of all value updates is
             less than update_threshold, value iteration will return its approximate solution.
         max_iters [int]: (optional) An upper bound on the number of value iterations to
@@ -44,8 +47,10 @@ def backwards_value_iter(mdp, init_state, states=None, update_threshold=1e-7, ma
             of whether `update_threshold`'s condition is met.
 
     Returns:
-        value [np.ndarray]: A length S array, where the ith element is the value of
-            reaching state i starting from init_state.
+        value [np.ndarray]: If `states` is not given, a length S array, where the ith
+            element is the value of reaching state i starting from init_state. If
+            `states` is given, a length `len(states)` array where the ith element
+            is the value of reaching state `states[i]` starting from init_state.
     """
     assert init_state >= 0 and init_state < mdp.S, init_state
     V = np.array([float('-inf')] * mdp.S)
@@ -56,15 +61,23 @@ def backwards_value_iter(mdp, init_state, states=None, update_threshold=1e-7, ma
     max_update = float('inf')
     it = 0
     while max_update > update_threshold and it < max_iters:
-        V_prime = np.zeros(mdp.S)
-        for s_prime in range(mdp.S):
-            for a in range(mdp.A):
-                s = mdp.transition(s_prime, a)
-                V_prime[s] += np.exp(mdp.rewards[s_prime, a] + V[s_prime])
 
-        warnings.filterwarnings("ignore", "divide by zero encountered in log")
-        V_prime = np.log(V_prime)
-        warnings.resetwarnings()
+        if softmax:
+            V_prime = np.zeros(mdp.S)
+            for s_prime in range(mdp.S):
+                for a in range(mdp.A):
+                    s = mdp.transition(s_prime, a)
+                    V_prime[s] += np.exp(mdp.rewards[s_prime, a] + V[s_prime])
+
+            warnings.filterwarnings("ignore", "divide by zero encountered in log")
+            V_prime = np.log(V_prime)
+            warnings.resetwarnings()
+        else:
+            V_prime = np.array([float('-inf')] * mdp.S)
+            for s_prime in range(mdp.S):
+                for a in range(mdp.A):
+                    s = mdp.transition(s_prime, a)
+                    V_prime[s] = max(V_prime[s], mdp.rewards[s_prime, a] + V[s_prime])
 
         max_update = _calc_max_update(V, V_prime)
         it += 1
