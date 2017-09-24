@@ -37,9 +37,10 @@ def infer_destination(mdp, traj, prior=None):
     traj_reward = _sum_rewards(mdp, traj)
 
     S_a = traj[0][0]
-    V_a = backwards_value_iter(mdp, S_a)
+    # TODO(shwang): remove max_iters when backwards_value_iter converges
+    V_a = backwards_value_iter(mdp, S_a, max_iters=mdp.S)
     S_b = mdp.transition(*traj[-1])
-    V_b = backwards_value_iter(mdp, S_b)
+    V_b = backwards_value_iter(mdp, S_b, max_iters=mdp.S)
 
     P_dest = np.zeros(mdp.S)
     for C in range(mdp.S):
