@@ -61,7 +61,6 @@ def backwards_value_iter(mdp, init_state, states=None, update_threshold=1e-7, ma
     max_update = float('inf')
     it = 0
     while max_update > update_threshold and it < max_iters:
-
         if softmax:
             V_prime = np.zeros(mdp.S)
             for s_prime in range(mdp.S):
