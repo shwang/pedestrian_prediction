@@ -23,28 +23,86 @@ def _calc_max_update(V, V_prime):
 
     return max_update
 
-def backwards_value_iter(mdp, init_state, states=None, update_threshold=1e-7, max_iters=None,
-        softmax=True):
+def forwards_value_iter(mdp, init_state, goal_state, update_threshold=1e-7, max_iters=None,
+        fixed_goal=False):
     """
-    Approximate the softmax value of reaching various destination states, starting
-    from a given initial state.
+    Approximate the softmax value of various initial states, given the goal state.
 
     Params:
-        S [int]: The number of states.
-        A [int]: The number of actions.
-        init_state [int]: A starting state, whose initial value will be set to 0. All other
-            states will be initialized with value float('-inf').
-        rewards [np.ndarray]: a SxA array where rewards[s, a] is the reward
-            received from taking action a at state s.
-        transition [function]: The state transition function for the deterministic MDP.
-            transition(s, a) returns the state that results from taking action a at state s.
-        states [list]: (optional) An ordered list of destination states to calculate
-            value for. By default, calculate the value of all states.
+        mdp [GridWorldMDP]: The MDP.
+        goal_state [int]: A goal state, the only state in which the Absorb action is legal
+            and the initial value is 0. All other states start with initial value of
+            -inf.
         update_threshold [float]: (optional) When the magnitude of all value updates is
             less than update_threshold, value iteration will return its approximate solution.
         max_iters [int]: (optional) An upper bound on the number of value iterations to
             perform. If this upper bound is reached, then iteration will cease regardless
             of whether `update_threshold`'s condition is met.
+        fixed_goal [bool]: (experimental) Fix goal_state's value at 0.
+
+    Returns:
+        value [np.ndarray]: If `states` is not given, a length S array, where the ith
+            element is the value of reaching state i starting from init_state. If
+            `states` is given, a length `len(states)` array where the ith element
+            is the value of reaching state `states[i]` starting from init_state.
+    """
+
+    assert goal_state >= 0 and goal_state < mdp.S, goal_state
+    V = np.array([float('-inf')] * mdp.S)
+    V[goal_state] = 0
+    if max_iters == None:
+        max_iters = float('inf')
+
+    # Reconfigure rewards to allow ABSORB action at goal_state.
+    mdp = mdp.copy()
+    mdp.set_goal(goal_state)
+
+    max_update = float('inf')
+    it = 0
+    while max_update > update_threshold and it < max_iters:
+        V_prime = np.zeros(mdp.S)
+        for s in range(mdp.S):
+            for a in range(mdp.A):
+                if fixed_goal and s == goal_state:
+                    continue
+                s_prime = mdp.transition(s, a)
+                V_prime[s] += np.exp(mdp.rewards[s, a] + V[s_prime])
+
+        if fixed_goal:
+            V_prime[goal_state] = 1  # becomes 0 after log
+
+        # This warning will appear when taking the log of float(-inf) in V_prime.
+        warnings.filterwarnings("ignore", "divide by zero encountered in log")
+        V_prime = np.log(V_prime)
+        warnings.resetwarnings()
+
+
+        max_update = _calc_max_update(V, V_prime)
+        it += 1
+        V = V_prime
+
+    return V
+
+def backwards_value_iter(mdp, init_state, goal_state, update_threshold=1e-7, max_iters=None,
+        fixed_init=False):
+    """
+    Approximate the softmax value of reaching various destination states, starting
+    from a given initial state.
+
+    Params:
+        mdp [GridWorldMDP]: The MDP to run backwards_value_iter in. Maybe I should change this
+            make backwards_value_iter part of the GridWorldMDP class... anyways the
+            coupling is kind of uncomfortable right now.
+        init_state [int]: A starting state, whose initial value will be set to 0. All other
+            states will be initialized with value float('-inf').
+        goal_state [int]: A goal state, the only state in which the Absorb action is legal.
+                            Or provide -1 to allow Absorb at every state.
+        update_threshold [float]: (optional) When the magnitude of all value updates is
+            less than update_threshold, value iteration will return its approximate solution.
+        max_iters [int]: (optional) An upper bound on the number of value iterations to
+            perform. If this upper bound is reached, then iteration will cease regardless
+            of whether `update_threshold`'s condition is met.
+        fixed_init [bool]: (experimental) Fix initial state's value at 0.
 
     Returns:
         value [np.ndarray]: If `states` is not given, a length S array, where the ith
@@ -53,30 +111,38 @@ def backwards_value_iter(mdp, init_state, states=None, update_threshold=1e-7, ma
             is the value of reaching state `states[i]` starting from init_state.
     """
     assert init_state >= 0 and init_state < mdp.S, init_state
+    assert goal_state >= -1 and goal_state < mdp.S, goal_state
     V = np.array([float('-inf')] * mdp.S)
     V[init_state] = 0
     if max_iters == None:
         max_iters = float('inf')
 
+    # Reconfigure rewards to allow ABSORB action at goal_state.
+    mdp = mdp.copy()
+    if goal_state == -1:
+        mdp.set_all_goals()
+    else:
+        mdp.set_goal(goal_state)
+
     max_update = float('inf')
     it = 0
     while max_update > update_threshold and it < max_iters:
-        if softmax:
-            V_prime = np.zeros(mdp.S)
-            for s_prime in range(mdp.S):
-                for a in range(mdp.A):
-                    s = mdp.transition(s_prime, a)
-                    V_prime[s] += np.exp(mdp.rewards[s_prime, a] + V[s_prime])
+        V_prime = np.zeros(mdp.S)
+        for s_prime in range(mdp.S):
+            for a in range(mdp.A):
+                s = mdp.transition(s_prime, a)
+                if fixed_init and s == init_state:
+                    continue
+                V_prime[s] += np.exp(mdp.rewards[s_prime, a] + V[s_prime])
 
-            warnings.filterwarnings("ignore", "divide by zero encountered in log")
-            V_prime = np.log(V_prime)
-            warnings.resetwarnings()
-        else:
-            V_prime = np.array([float('-inf')] * mdp.S)
-            for s_prime in range(mdp.S):
-                for a in range(mdp.A):
-                    s = mdp.transition(s_prime, a)
-                    V_prime[s] = max(V_prime[s], mdp.rewards[s_prime, a] + V[s_prime])
+        if fixed_init:
+            V_prime[init_state] = 1  # becomes 0 after log
+
+        # This warning will appear when taking the log of float(-inf) in V_prime.
+        warnings.filterwarnings("ignore", "divide by zero encountered in log")
+        V_prime = np.log(V_prime)
+        warnings.resetwarnings()
+
 
         max_update = _calc_max_update(V, V_prime)
         it += 1
