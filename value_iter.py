@@ -97,6 +97,7 @@ def backwards_value_iter(mdp, init_state, goal_state, update_threshold=1e-7, max
             states will be initialized with value float('-inf').
         goal_state [int]: A goal state, the only state in which the Absorb action is legal.
                             Or provide -1 to allow Absorb at every state.
+                            Or provide None to allow Absorb at no state.
         update_threshold [float]: (optional) When the magnitude of all value updates is
             less than update_threshold, value iteration will return its approximate solution.
         max_iters [int]: (optional) An upper bound on the number of value iterations to
@@ -111,7 +112,7 @@ def backwards_value_iter(mdp, init_state, goal_state, update_threshold=1e-7, max
             is the value of reaching state `states[i]` starting from init_state.
     """
     assert init_state >= 0 and init_state < mdp.S, init_state
-    assert goal_state >= -1 and goal_state < mdp.S, goal_state
+    assert goal_state == None or (goal_state >= -1 and goal_state < mdp.S), goal_state
     V = np.array([float('-inf')] * mdp.S)
     V[init_state] = 0
     if max_iters == None:
