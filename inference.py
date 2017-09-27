@@ -1,4 +1,6 @@
 import numpy as np
+from numpy import random
+import random
 
 from value_iter import backwards_value_iter
 
@@ -8,6 +10,59 @@ def _sum_rewards(mdp, traj):
 def _normalize(vec):
     x = np.array(vec)
     return x/sum(x)
+
+def simulate(mdp, initial_state, goal_state, path_length=None):
+    """
+    Generate a sample trajectory of a softmax agent's behavior.
+
+    Params:
+        mdp [MDP]: The world that the agent is acting in.
+        initial_state [int]: The state that the agent starts in.
+        dest_state [int]: The agent's goal state.
+        path_length [int]: (optional) If the returned trajectory
+            has length more than `path_length`, the return
+            value is truncated.
+
+    Return:
+        traj [list]: A list of (int, int) pairs, representing
+            the agent's state and action at each timestep.
+    """
+    mdp = mdp.copy()
+    mdp.set_goal(goal_state)
+
+    if path_length == None:
+        path_length = float('inf')
+
+    traj = []
+    s = initial_state
+    while len(traj) < path_length:
+        a = sample_action(mdp, s, goal_state)
+        traj.append([s, a])
+        if a == mdp.Actions.ABSORB:
+            break
+        else:
+            s = mdp.transition(s, a)
+    return traj
+
+def sample_action(mdp, state, goal):
+    """
+    Choose an action probabilistically, like a softmax agent would.
+    Params:
+        mdp [MDP]: The MDP that the agent is playing.
+        state [int]: The state that the agent is in.
+    Return:
+        a [int]: An action.
+    """
+    mdp.set_goal(goal)
+    V = backwards_value_iter(mdp, state, goal)
+    P = np.zeros(mdp.A)
+    for a in range(mdp.A):
+        s_prime = mdp.transition(state, a)
+        P[a] = mdp.rewards[state, a] + V[s_prime] - V[state]
+
+    P = np.exp(P)
+    P = P / sum(P)
+    return np.random.choice(list(range(mdp.A)), p=P)
 
 def infer_destination(mdp, traj, prior=None):
     """
@@ -32,15 +87,14 @@ def infer_destination(mdp, traj, prior=None):
         assert a >= 0 and a < mdp.A, a
     if prior != None:
         assert len(prior) == mdp.S, len(prior)
-        assert sum(prior) - 1.0 < 1e-7, (sum(prior), prior)
+        assert abs(sum(prior) - 1.0) < 1e-7, (sum(prior), prior)
 
     traj_reward = _sum_rewards(mdp, traj)
 
     S_a = traj[0][0]
-    # TODO(shwang): remove max_iters when backwards_value_iter converges
-    V_a = backwards_value_iter(mdp, S_a, max_iters=mdp.S)
+    V_a = backwards_value_iter(mdp, S_a)
     S_b = mdp.transition(*traj[-1])
-    V_b = backwards_value_iter(mdp, S_b, max_iters=mdp.S)
+    V_b = backwards_value_iter(mdp, S_b)
 
     P_dest = np.zeros(mdp.S)
     for C in range(mdp.S):
