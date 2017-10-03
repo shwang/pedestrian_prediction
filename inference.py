@@ -32,7 +32,7 @@ def simulate(mdp, initial_state, goal_state, path_length=None):
     Generate a sample trajectory of a softmax agent's behavior.
 
     Params:
-        mdp [MDP]: The world that the agent is acting in.
+        mdp [GridWorldMDP]: The world that the agent is acting in.
         initial_state [int]: The state that the agent starts in.
         dest_state [int]: The agent's goal state.
         path_length [int]: (optional) If the returned trajectory
@@ -67,7 +67,7 @@ def sample_action(mdp, state, goal, cached_values=None):
     """
     Choose an action probabilistically, like a softmax agent would.
     Params:
-        mdp [MDP]: The MDP that the agent is playing.
+        mdp [GridWorldMDP]: The MDP that the agent is playing.
         state [int]: The state that the agent is in.
         cached_values [np.ndarray]: (optional) Precalculated values from all states to goal.
             (Calculated using forward value iteration)
@@ -96,7 +96,7 @@ def infer_destination(mdp, traj, prior=None, dest_set=None,
     Calculate the probability of each destination given the trajectory so far.
 
     Params:
-        mdp [MDP]: The world that the agent is acting in.
+        mdp [GridWorldMDP]: The world that the agent is acting in.
         traj [list-like]: A nonempty list of (state, action) tuples describing
             the agent's trajectory so far. The current state of the agent is
             inferred to be `mdp.transition(*traj[-1])`.
