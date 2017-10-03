@@ -23,8 +23,8 @@ def _calc_max_update(V, V_prime):
 
     return max_update
 
-def forwards_value_iter(mdp, init_state, goal_state, update_threshold=1e-7, max_iters=None,
-        fixed_goal=False):
+def forwards_value_iter(mdp, goal_state, update_threshold=1e-7, max_iters=None,
+        fixed_goal=True, verbose=False):
     """
     Approximate the softmax value of various initial states, given the goal state.
 
@@ -39,6 +39,7 @@ def forwards_value_iter(mdp, init_state, goal_state, update_threshold=1e-7, max_
             perform. If this upper bound is reached, then iteration will cease regardless
             of whether `update_threshold`'s condition is met.
         fixed_goal [bool]: (experimental) Fix goal_state's value at 0.
+        verbose [bool]: (optional) If true, then print the result of each iteration.
 
     Returns:
         value [np.ndarray]: If `states` is not given, a length S array, where the ith
@@ -60,6 +61,8 @@ def forwards_value_iter(mdp, init_state, goal_state, update_threshold=1e-7, max_
     max_update = float('inf')
     it = 0
     while max_update > update_threshold and it < max_iters:
+        if verbose:
+            print(it, V.reshape(mdp.rows, mdp.cols))
         V_prime = np.zeros(mdp.S)
         for s in range(mdp.S):
             for a in range(mdp.A):
@@ -83,8 +86,8 @@ def forwards_value_iter(mdp, init_state, goal_state, update_threshold=1e-7, max_
 
     return V
 
-def backwards_value_iter(mdp, init_state, goal_state, update_threshold=1e-7, max_iters=None,
-        fixed_init=False):
+def backwards_value_iter(mdp, init_state, goal_state=None, update_threshold=1e-7, max_iters=None,
+        fixed_init=True, verbose=False):
     """
     Approximate the softmax value of reaching various destination states, starting
     from a given initial state.
@@ -104,6 +107,7 @@ def backwards_value_iter(mdp, init_state, goal_state, update_threshold=1e-7, max
             perform. If this upper bound is reached, then iteration will cease regardless
             of whether `update_threshold`'s condition is met.
         fixed_init [bool]: (experimental) Fix initial state's value at 0.
+        verbose [bool]: (optional) If true, then print the result of each iteration.
 
     Returns:
         value [np.ndarray]: If `states` is not given, a length S array, where the ith
@@ -128,6 +132,8 @@ def backwards_value_iter(mdp, init_state, goal_state, update_threshold=1e-7, max
     max_update = float('inf')
     it = 0
     while max_update > update_threshold and it < max_iters:
+        if verbose:
+            print(it, V.reshape(mdp.rows, mdp.cols))
         V_prime = np.zeros(mdp.S)
         for s_prime in range(mdp.S):
             for a in range(mdp.A):
@@ -143,7 +149,6 @@ def backwards_value_iter(mdp, init_state, goal_state, update_threshold=1e-7, max
         warnings.filterwarnings("ignore", "divide by zero encountered in log")
         V_prime = np.log(V_prime)
         warnings.resetwarnings()
-
 
         max_update = _calc_max_update(V, V_prime)
         it += 1
