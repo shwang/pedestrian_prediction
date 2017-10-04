@@ -24,7 +24,7 @@ def _calc_max_update(V, V_prime):
     return max_update
 
 def forwards_value_iter(mdp, goal_state, update_threshold=1e-7, max_iters=None,
-        fixed_goal=True, verbose=False):
+        fixed_goal=True, fixed_goal_val=0, verbose=False):
     """
     Approximate the softmax value of various initial states, given the goal state.
 
@@ -38,7 +38,9 @@ def forwards_value_iter(mdp, goal_state, update_threshold=1e-7, max_iters=None,
         max_iters [int]: (optional) An upper bound on the number of value iterations to
             perform. If this upper bound is reached, then iteration will cease regardless
             of whether `update_threshold`'s condition is met.
-        fixed_goal [bool]: (experimental) Fix goal_state's value at 0.
+        fixed_goal [bool]: (optional) Fix goal_state's value at `fixed_goal_val`.
+        fixed_goal_val [float]: (optional) If `fixed_goal` is True, then fix the
+            goal_state's value at this value.
         verbose [bool]: (optional) If true, then print the result of each iteration.
 
     Returns:
@@ -71,14 +73,13 @@ def forwards_value_iter(mdp, goal_state, update_threshold=1e-7, max_iters=None,
                 s_prime = mdp.transition(s, a)
                 V_prime[s] += np.exp(mdp.rewards[s, a] + V[s_prime])
 
-        if fixed_goal:
-            V_prime[goal_state] = 1  # becomes 0 after log
-
         # This warning will appear when taking the log of float(-inf) in V_prime.
         warnings.filterwarnings("ignore", "divide by zero encountered in log")
         V_prime = np.log(V_prime)
         warnings.resetwarnings()
 
+        if fixed_goal:
+            V_prime[goal_state] = fixed_goal_val
 
         max_update = _calc_max_update(V, V_prime)
         it += 1
@@ -87,7 +88,7 @@ def forwards_value_iter(mdp, goal_state, update_threshold=1e-7, max_iters=None,
     return V
 
 def backwards_value_iter(mdp, init_state, goal_state=None, update_threshold=1e-7, max_iters=None,
-        fixed_init=True, verbose=False):
+        fixed_init=True, fixed_init_val=0, verbose=False):
     """
     Approximate the softmax value of reaching various destination states, starting
     from a given initial state.
@@ -106,7 +107,9 @@ def backwards_value_iter(mdp, init_state, goal_state=None, update_threshold=1e-7
         max_iters [int]: (optional) An upper bound on the number of value iterations to
             perform. If this upper bound is reached, then iteration will cease regardless
             of whether `update_threshold`'s condition is met.
-        fixed_init [bool]: (experimental) Fix initial state's value at 0.
+        fixed_init [bool]: (optional) Fix initial state's value at `fixed_init_val`.
+        fixed_init_val [float]: (optional) If `fixed_init` is True, then fix the initial
+            state's value at this value.
         verbose [bool]: (optional) If true, then print the result of each iteration.
 
     Returns:
@@ -142,13 +145,13 @@ def backwards_value_iter(mdp, init_state, goal_state=None, update_threshold=1e-7
                     continue
                 V_prime[s] += np.exp(mdp.rewards[s_prime, a] + V[s_prime])
 
-        if fixed_init:
-            V_prime[init_state] = 1  # becomes 0 after log
-
         # This warning will appear when taking the log of float(-inf) in V_prime.
         warnings.filterwarnings("ignore", "divide by zero encountered in log")
         V_prime = np.log(V_prime)
         warnings.resetwarnings()
+
+        if fixed_init:
+            V_prime[init_state] = fixed_init_val
 
         max_update = _calc_max_update(V, V_prime)
         it += 1
