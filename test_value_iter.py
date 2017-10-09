@@ -3,7 +3,7 @@ import numpy as np
 from numpy import testing as t
 
 from mdp import GridWorldMDP
-from value_iter import backwards_value_iter, _calc_max_update
+from value_iter import forwards_value_iter, backwards_value_iter, _calc_max_update
 
 ni = float('-inf')
 
@@ -60,3 +60,11 @@ class TestBackwardsValueIter(TestCase):
         t.assert_allclose(backwards_value_iter(g, 0, max_iters=2), [0, -1, -11])
         V_3 = [0, np.log(np.exp(-1) + np.exp(-12)), -11]
         t.assert_allclose(backwards_value_iter(g, 0, max_iters=3), V_3)
+
+class TestForwardsValueIter(TestCase):
+    def test_forward_backwards_consistency(self):
+        g = GridWorldMDP(3, 3, {(2,0): -30, (1,1): -40}, default_reward=-10)
+        V_b = backwards_value_iter(g, 0)
+        for s in range(g.S):
+            V_f = forwards_value_iter(g, s)
+            t.assert_allclose(V_f[0], V_b[s])
