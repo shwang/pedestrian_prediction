@@ -14,7 +14,13 @@ def _normalize(vec):
 def _display(mdp, traj, init_state, goal_state, overlay=False):
     init_state = mdp.state_to_coor(init_state)
     goal_state = mdp.state_to_coor(goal_state)
+
     visited = {mdp.state_to_coor(s) for s, a in traj}
+    if len(traj) > 0:
+        visited.add(mdp.state_to_coor(mdp.transition(*traj[-1])))
+    else:
+        visited.add(init_state)
+
     for r in range(mdp.rows):
         line = ['_'] * mdp.cols
         for c in range(mdp.cols):
