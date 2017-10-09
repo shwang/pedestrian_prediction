@@ -82,7 +82,7 @@ def sample_action(mdp, state, goal, cached_values=None):
     """
     mdp.set_goal(goal)
 
-    if cached_values != None:
+    if cached_values is not None:
         V = cached_values
     else:
         V = forwards_value_iter(mdp, goal, max_iters=1000)
@@ -97,6 +97,7 @@ def sample_action(mdp, state, goal, cached_values=None):
     return np.random.choice(list(range(mdp.A)), p=P)
 
 def infer_destination(mdp, traj, prior=None, dest_set=None,
+        V_a_cached=None, V_b_cached=None,
         backwards_value_iter_fn=backwards_value_iter, verbose=False):
     """
     Calculate the probability of each destination given the trajectory so far.
@@ -113,6 +114,12 @@ def infer_destination(mdp, traj, prior=None, dest_set=None,
             state. Equivalent to setting the priors of states not in this set to
             zero and renormalizing. By default, the dest_set contains all possible
             destinations.
+        V_a_cached [list-like]: (optional) An `mdp.S`-length list with the backwards
+            softmax values of each state, given the initial state matches that of
+            the trajectory `traj`.
+        V_b_cached [list-like]: (optional) An `mdp.S`-length list with the backwards
+            softmax values of each state, given the initial state matches
+            the state that the last state-action pair in `traj` would transition into.
         backwards_value_iter_fn [function]: (optional) Set this parameter to use
             a custom version of backwards_value_iter. Used for testing.
     Return:
@@ -124,11 +131,13 @@ def infer_destination(mdp, traj, prior=None, dest_set=None,
     for s, a in traj:
         assert s >= 0 and s < mdp.S, s
         assert a >= 0 and a < mdp.A, a
-    if prior != None:
+    if prior is not None:
         assert len(prior) == mdp.S, len(prior)
         assert abs(sum(prior) - 1.0) < 1e-7, (sum(prior), prior)
     else:
         prior = [1] * mdp.S
+    assert V_a_cached is None or len(V_a_cached) == mdp.S, V_a_cached
+    assert V_b_cached is None or len(V_b_cached) == mdp.S, V_b_cached
 
     if dest_set != None:
         all_set = {i for i in range(mdp.S)}
@@ -147,19 +156,86 @@ def infer_destination(mdp, traj, prior=None, dest_set=None,
         # choosing an illegal action other than ABSORB
         print("Warning: -inf traj_reward in infer_destination.")
 
+    if V_a_cached is None:
+        S_a = traj[0][0]
+        V_a = backwards_value_iter_fn(mdp, S_a, verbose=verbose)
+    else:
+        V_a = V_a_cached
+
+    if V_b_cached is None:
+        S_b = mdp.transition(*traj[-1])
+        V_b = backwards_value_iter_fn(mdp, S_b, verbose=verbose)
+    else:
+        V_b = V_b_cached
+
+    P_dest = np.zeros(mdp.S)
+    for C in range(mdp.S):
+        P_dest[C] = np.exp(traj_reward + V_b[C] - V_a[C])
+        if prior is not None:
+            P_dest[C] *= prior[C]
+    return _normalize(P_dest)
+
+def infer_occupancies(mdp, traj, prior=None, dest_set=None,
+        backwards_value_iter_fn=backwards_value_iter, verbose=False):
+    """
+    Calculate the expected number of times each state will be occupied given the
+    trajectory so far.
+
+    Params:
+        mdp [GridWorldMDP]: The world that the agent is acting in.
+        traj [list-like]: A nonempty list of (state, action) tuples describing
+            the agent's trajectory so far. The current state of the agent is
+            inferred to be `mdp.transition(*traj[-1])`.
+        prior [list-like]: (optional) A normalized vector with length mdp.S, where
+            the ith entry is the prior probability that the agent's destination is
+            state i. By default, the prior probability is uniform over all states.
+        dest_set [set]: (optional) A set of states that could be the destination
+            state. Equivalent to setting the priors of states not in this set to
+            zero and renormalizing. By default, the dest_set contains all possible
+            destinations.
+        backwards_value_iter_fn [function]: (optional) Set this parameter to use
+            a custom version of backwards_value_iter. Used for testing.
+    Return:
+        D_dest [np.ndarray]: A normalized vector with length mdp.S, where the ith
+            entry is the expected occupancy of state i, given the provided
+            trajectory.
+    """
+    assert len(traj) > 0
+    for s, a in traj:
+        assert s >= 0 and s < mdp.S, s
+        assert a >= 0 and a < mdp.A, a
+    if prior != None:
+        assert len(prior) == mdp.S, len(prior)
+        assert abs(sum(prior) - 1.0) < 1e-7, (sum(prior), prior)
+    else:
+        prior = [1] * mdp.S
+
+    if dest_set != None:
+        all_set = set(range(mdp.S))
+        assert dest_set.issubset(all_set), (dest_set, mdp.S)
+        impossible_set = all_set - dest_set
+        for d in impossible_set:
+            prior[d] = 0
+    prior = _normalize(prior)
+
     S_a = traj[0][0]
     V_a = backwards_value_iter_fn(mdp, S_a, verbose=verbose)
     S_b = mdp.transition(*traj[-1])
     V_b = backwards_value_iter_fn(mdp, S_b, verbose=verbose)
 
-    P_dest = np.zeros(mdp.S)
-    for C in range(mdp.S):
-        P_dest[C] = np.exp(traj_reward + V_b[C] - V_a[C])
-        if prior != None:
-            P_dest[C] *= prior[C]
-    return _normalize(P_dest)
+    P_dest = infer_destination(mdp, traj, prior, dest_set, V_a, V_b,
+            backwards_value_iter_fn)
 
-def infer_state_frequency(traj):
-    """
-    Calculate the probability of occupying each state given the trajectory so far.
-    """
+    D_dest = np.zeros(mdp.S)
+    for C in range(mdp.S):
+        if prior[C] == 0:
+            continue
+
+        goal_val = -V_b[C] + np.log(P_dest[C])
+        D_dest += np.exp(
+                forwards_value_iter(mdp, C, fixed_goal=True, fixed_goal_val=goal_val))
+
+    # The paper says to multiply by exp(V_a), but exp(V_b) gets better results
+    # and seems more intuitive.
+    D_dest *= np.exp(V_b)
+    return D_dest
