@@ -123,7 +123,7 @@ def sample_action(mdp, state, goal, beta=1, cached_values=None):
     P = P / sum(P)
     return np.random.choice(list(range(mdp.A)), p=P)
 
-def infer_destination(mdp, traj, prior=None, dest_set=None,
+def infer_destination(mdp, traj, beta=1, prior=None, dest_set=None,
         V_a_cached=None, V_b_cached=None,
         backwards_value_iter_fn=backwards_value_iter, verbose=False):
     """
@@ -134,6 +134,10 @@ def infer_destination(mdp, traj, prior=None, dest_set=None,
         traj [list-like]: A nonempty list of (state, action) tuples describing
             the agent's trajectory so far. The current state of the agent is
             inferred to be `mdp.transition(*traj[-1])`.
+        beta [float]: (optional) The softmax agent's irrationality constant.
+            Beta must be nonnegative. If beta=0, then the softmax agent
+            always acts optimally. If beta=float('inf'), then the softmax agent
+            acts completely randomly.
         prior [list-like]: (optional) A normalized vector with length mdp.S, where
             the ith entry is the prior probability that the agent's destination is
             state i. By default, the prior probability is uniform over all states.
@@ -154,6 +158,7 @@ def infer_destination(mdp, traj, prior=None, dest_set=None,
             entry is the probability that the agent's destination is state i,
             given the provided trajectory.
     """
+    assert beta >= 0
     assert len(traj) > 0
     for s, a in traj:
         assert s >= 0 and s < mdp.S, s
@@ -185,13 +190,13 @@ def infer_destination(mdp, traj, prior=None, dest_set=None,
 
     if V_a_cached is None:
         S_a = traj[0][0]
-        V_a = backwards_value_iter_fn(mdp, S_a, verbose=verbose)
+        V_a = backwards_value_iter_fn(mdp, S_a, beta=beta, verbose=verbose)
     else:
         V_a = V_a_cached
 
     if V_b_cached is None:
         S_b = mdp.transition(*traj[-1])
-        V_b = backwards_value_iter_fn(mdp, S_b, verbose=verbose)
+        V_b = backwards_value_iter_fn(mdp, S_b, beta=beta, verbose=verbose)
     else:
         V_b = V_b_cached
 
@@ -202,7 +207,7 @@ def infer_destination(mdp, traj, prior=None, dest_set=None,
             P_dest[C] *= prior[C]
     return _normalize(P_dest)
 
-def infer_occupancies(mdp, traj, prior=None, dest_set=None,
+def infer_occupancies(mdp, traj, beta=1, prior=None, dest_set=None,
         backwards_value_iter_fn=backwards_value_iter, verbose=False):
     """
     Calculate the expected number of times each state will be occupied given the
@@ -213,6 +218,10 @@ def infer_occupancies(mdp, traj, prior=None, dest_set=None,
         traj [list-like]: A nonempty list of (state, action) tuples describing
             the agent's trajectory so far. The current state of the agent is
             inferred to be `mdp.transition(*traj[-1])`.
+        beta [float]: (optional) The softmax agent's irrationality constant.
+            Beta must be nonnegative. If beta=0, then the softmax agent
+            always acts optimally. If beta=float('inf'), then the softmax agent
+            acts completely randomly.
         prior [list-like]: (optional) A normalized vector with length mdp.S, where
             the ith entry is the prior probability that the agent's destination is
             state i. By default, the prior probability is uniform over all states.
@@ -246,12 +255,13 @@ def infer_occupancies(mdp, traj, prior=None, dest_set=None,
     prior = _normalize(prior)
 
     S_a = traj[0][0]
-    V_a = backwards_value_iter_fn(mdp, S_a, verbose=verbose)
+    V_a = backwards_value_iter_fn(mdp, S_a, beta=beta, verbose=verbose)
     S_b = mdp.transition(*traj[-1])
-    V_b = backwards_value_iter_fn(mdp, S_b, verbose=verbose)
+    V_b = backwards_value_iter_fn(mdp, S_b, beta=beta, verbose=verbose)
 
-    P_dest = infer_destination(mdp, traj, prior, dest_set, V_a, V_b,
-            backwards_value_iter_fn)
+    P_dest = infer_destination(mdp, traj, beta=beta, prior=prior, dest_set=dest_set,
+            V_a_cached=V_a, V_b_cached=V_b,
+            backwards_value_iter_fn=backwards_value_iter_fn)
 
     D_dest = np.zeros(mdp.S)
     for C in range(mdp.S):
@@ -260,7 +270,8 @@ def infer_occupancies(mdp, traj, prior=None, dest_set=None,
 
         goal_val = -V_b[C] + np.log(P_dest[C])
         D_dest += np.exp(
-                forwards_value_iter(mdp, C, fixed_goal=True, fixed_goal_val=goal_val))
+                forwards_value_iter(mdp, C, beta=beta,
+                    fixed_goal=True, fixed_goal_val=goal_val, verbose=verbose))
 
     # The paper says to multiply by exp(V_a), but exp(V_b) gets better results
     # and seems more intuitive.
