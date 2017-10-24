@@ -1,4 +1,5 @@
 import numpy as np
+import queue
 import warnings
 
 def _calc_max_update(V, V_prime):
@@ -22,6 +23,45 @@ def _calc_max_update(V, V_prime):
             max_update = max(max_update, abs(v - v_p))
 
     return max_update
+
+def dijkstra(mdp, init_state, verbose=False):
+    """
+    Calculate the reward of the optimal trajectory to each state, starting from
+    `init_state`. Runs in |S| log |S| time, where |S| is the number of states.
+
+    Params:
+        mdp [GridWorldMDP]: The MDP.
+        init_state [int]: The starting state. The reward of the optimal trajectory
+            to the starting state is 0.
+
+    Returns:
+        R_star [np.ndarray]: An `mdp.S`-length vector, where the ith entry is
+            the reward of the optimal trajectory from the starting state to
+            state i.
+    """
+    # Dijkstra is only valid if all costs are nonnegative.
+    assert (mdp.rewards <= 0).all()
+
+    R_star = np.ndarray(mdp.S)
+    pq = queue.PriorityQueue()
+    visited = set()
+    # entry := (cost, node)
+    pq.put((0, init_state))
+    while not pq.empty():
+        cost, state = pq.get()
+        if state in visited:
+            continue
+        R_star[state] = cost
+        visited.add(state)
+
+        for a in mdp.Actions:
+            reward = mdp.rewards[state, a]
+            s_prime = mdp._transition(state, a)
+            if reward == -np.inf or s_prime in visited:
+                continue
+            pq.put((-reward + cost, s_prime))
+
+    return -R_star
 
 def forwards_value_iter(mdp, goal_state, update_threshold=1e-7, max_iters=None,
         fixed_goal=True, fixed_goal_val=0, beta=1, verbose=False):
@@ -106,6 +146,9 @@ def backwards_value_iter(mdp, init_state, goal_state=None, update_threshold=1e-7
         goal_state [int]: A goal state, the only state in which the Absorb action is legal.
                             Or provide -1 to allow Absorb at every state.
                             Or provide None to allow Absorb at no state.
+                            [!!! Experimentally, we have found that the default values:
+                                goal_state=None, fixed_init=True, and fixed_init_val=0
+                                work best.]
         update_threshold [float]: (optional) When the magnitude of all value updates is
             less than update_threshold, value iteration will return its approximate solution.
         max_iters [int]: (optional) An upper bound on the number of value iterations to
