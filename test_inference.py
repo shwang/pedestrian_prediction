@@ -72,7 +72,7 @@ class TestInferDestination(TestCase):
         P_dest[1] = np.exp(traj_reward + V_B[1] - V_A[1]) * prior[1]
         P_dest[2] = np.exp(traj_reward + V_B[2] - V_A[2]) * prior[2]
         expected_prob = _normalize(P_dest)
-        t.assert_allclose(expected_prob, infer_destination(g, traj, prior,
+        t.assert_allclose(expected_prob, infer_destination(g, traj, prior=prior,
             backwards_value_iter_fn=self.make_mock_backwards_value_iter(V_A, V_B)))
 
     def test_limited_dest_set(self):
