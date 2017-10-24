@@ -59,7 +59,7 @@ def simulate(mdp, initial_state, goal_state, beta=1, path_length=None):
     mdp.set_goal(goal_state)
 
     # V(state->goal)
-    V = forwards_value_iter(mdp, goal_state, max_iters=1000)
+    V = forwards_value_iter(mdp, goal_state, beta=beta, max_iters=1000)
 
     if path_length == None:
         path_length = float('inf')
@@ -97,7 +97,7 @@ def sample_action(mdp, state, goal, beta=1, cached_values=None):
     # TODO(sirspinach): This uniform choice also chooses ABSORB.
     #                   Get rid of this possibility for non-goal states.
     if beta == np.inf:
-        # Uniform choice, would result in P = 0/0 = NaN.
+        # Use uniform choice; would otherwise result in P = 0/0 = NaN.
         return np.random.choice(list(range(mdp.A)))
 
     if cached_values is not None:
@@ -109,17 +109,17 @@ def sample_action(mdp, state, goal, beta=1, cached_values=None):
     P = np.zeros(mdp.A)
     for a in range(mdp.A):
         s_prime = mdp.transition(state, a)
-        P[a] = mdp.rewards[state, a] + V[s_prime] - V[state]
+        P[a] = mdp.rewards[state, a]/beta + V[s_prime] - V[state]
 
     if beta == 0:
-        # Hardmax choice, would result in P = inf/inf = NaN.
+        # Use hardmax choice; would otherwise result in P = inf/inf = NaN.
         argmax = np.array(np.argmax(P))
         if argmax.shape == tuple():
             return argmax
         else:
             return np.random.choice(argmax)
 
-    P = np.exp(P/beta)
+    P = np.exp(P)
     P = P / sum(P)
     return np.random.choice(list(range(mdp.A)), p=P)
 
