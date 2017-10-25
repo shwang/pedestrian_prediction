@@ -95,7 +95,8 @@ def forwards_value_iter(mdp, goal_state, update_threshold=1e-7, max_iters=None,
     """
     assert beta >= 0, beta
     assert goal_state >= 0 and goal_state < mdp.S, goal_state
-    V = np.array([float('-inf')] * mdp.S)
+
+    V = np.full(mdp.S, float('-inf'))
     V[goal_state] = 0
     if max_iters == None:
         max_iters = float('inf')
@@ -131,7 +132,7 @@ def forwards_value_iter(mdp, goal_state, update_threshold=1e-7, max_iters=None,
 
     return V
 
-def backwards_value_iter(mdp, init_state, goal_state=None, update_threshold=1e-7, max_iters=None,
+def backwards_value_iter(mdp, init_state, goal_state=None, update_threshold=1e-8, max_iters=None,
         fixed_init=True, fixed_init_val=0, beta=1, verbose=False):
     """
     Approximate the softmax value of reaching various destination states, starting
@@ -172,7 +173,8 @@ def backwards_value_iter(mdp, init_state, goal_state=None, update_threshold=1e-7
     assert beta >= 0, beta
     assert init_state >= 0 and init_state < mdp.S, init_state
     assert goal_state == None or (goal_state >= -1 and goal_state < mdp.S), goal_state
-    V = np.array([float('-inf')] * mdp.S)
+
+    V = np.full(mdp.S, float('-inf'))
     V[init_state] = 0
     if max_iters == None:
         max_iters = float('inf')
