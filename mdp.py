@@ -78,6 +78,9 @@ class GridWorldMDP(MDP):
 
         super().__init__(S, A, rewards, self._transition)
 
+        self.state_rewards = np.full([S], default_reward)
+        for (r, c), reward in reward_dict.items():
+            self.state_rewards[self.coor_to_state(r,c)] = reward
         self.set_goal(goal_state)
 
     def copy(self):
@@ -85,6 +88,7 @@ class GridWorldMDP(MDP):
         cp.rewards = np.copy(self.rewards)
         return cp
 
+    # TODO: optimize so that we don't need to convert between state and coor.
     def _transition(self, s, a, alert_illegal=False):
         r, c = self.state_to_coor(s)
         assert a >= 0 and a < len(self.Actions), a
