@@ -174,6 +174,15 @@ def infer_destination(mdp, traj, beta=1, prior=None, dest_set=None,
     if dest_set != None:
         all_set = {i for i in range(mdp.S)}
         assert dest_set.issubset(all_set), (dest_set, mdp.S)
+
+        # If there is only one dest, all probability goes to that dest.
+        if len(dest_set) == 1:
+            res = np.zeros(mdp.S)
+            for d in dest_set:
+                res[d] = 1
+            return res
+
+        # Remove probability from nondestinations
         impossible_set = all_set - dest_set
         for d in impossible_set:
             prior[d] = 0
@@ -338,3 +347,60 @@ def infer_temporal_occupancies(mdp, traj, T, c_0, sigma_0, sigma_1,
         P_dest_t[:, s] = occupancy * _normalize(P_dest_t[:, s])
 
     return P_dest_t
+
+def infer_occupancies_from_start(mdp, init_state, beta=1, prior=None, dest_set=None,
+        backwards_value_iter_fn=backwards_value_iter, verbose=False):
+    """
+    Calculate the expected number of times each state will be occupied given the
+    trajectory so far.
+
+    Params:
+        mdp [GridWorldMDP]: The world that the agent is acting in.
+        init_state [int]: The agent's initial state.
+        beta [float]: (optional) The softmax agent's irrationality constant.
+            Beta must be nonnegative. If beta=0, then the softmax agent
+            always acts optimally. If beta=float('inf'), then the softmax agent
+            acts completely randomly.
+        prior [list-like]: (optional) A normalized vector with length mdp.S, where
+            the ith entry is the prior probability that the agent's destination is
+            state i. By default, the prior probability is uniform over all states.
+        dest_set [set]: (optional) A set of states that could be the destination
+            state. Equivalent to setting the priors of states not in this set to
+            zero and renormalizing. By default, the dest_set contains all possible
+            destinations.
+        backwards_value_iter_fn [function]: (optional) Set this parameter to use
+            a custom version of backwards_value_iter. Used for testing.
+    Return:
+        D_dest [np.ndarray]: A normalized vector with length mdp.S, where the ith
+            entry is the expected occupancy of state i, given the provided
+            trajectory.
+    """
+    assert init_state >= 0 and init_state < mdp.S, init_state
+    if prior != None:
+        assert len(prior) == mdp.S, len(prior)
+        assert abs(sum(prior) - 1.0) < 1e-7, (sum(prior), prior)
+    else:
+        prior = [1] * mdp.S
+
+    if dest_set != None:
+        all_set = set(range(mdp.S))
+        assert dest_set.issubset(all_set), (dest_set, mdp.S)
+        impossible_set = all_set - dest_set
+        for d in impossible_set:
+            prior[d] = 0
+    prior = _normalize(prior)
+
+    V = backwards_value_iter_fn(mdp, init_state, beta=beta, verbose=verbose)
+
+    D_dest = np.zeros(mdp.S)
+    for C in range(mdp.S):
+        if prior[C] == 0:
+            continue
+
+        goal_val = -V[C] + np.log(prior[C])
+        D_dest += np.exp(
+                forwards_value_iter(mdp, C, beta=beta,
+                    fixed_goal=True, fixed_goal_val=goal_val, verbose=verbose))
+
+    D_dest *= np.exp(V)
+    return D_dest
