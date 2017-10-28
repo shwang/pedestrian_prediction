@@ -132,6 +132,7 @@ def forwards_value_iter(mdp, goal_state, update_threshold=1e-7, max_iters=None,
 
     return V
 
+# TODO: get rid of this goal_state, fixed_init stuff. That should always be true.
 def backwards_value_iter(mdp, init_state, goal_state=None, update_threshold=1e-8, max_iters=None,
         fixed_init=True, fixed_init_val=0, beta=1, verbose=False):
     """
@@ -186,29 +187,78 @@ def backwards_value_iter(mdp, init_state, goal_state=None, update_threshold=1e-8
     else:
         mdp.set_goal(goal_state)
 
-    max_update = float('inf')
+    # Set up the dirty bitfield. When caching is True, this is used to determine
+    # which states to update.
+    dirty = np.full(mdp.S, False)
+    dirty[init_state] = True
+    updatable = np.empty(mdp.S, dtype=bool)
+
+    max_update = np.inf
     it = 0
-    while max_update > update_threshold and it < max_iters:
+    V_prime = np.full(mdp.S, -np.inf)
+    V_prime[init_state] = 0
+
+    while it < max_iters:
         if verbose:
             print(it, V.reshape(mdp.rows, mdp.cols))
-        V_prime = np.zeros(mdp.S)
+
+        # If a state is dirty or has dirty neighbours, then it is updatable.
+        updatable[:] = dirty
+        for s_prime, dirt in enumerate(dirty):
+            if not dirt:
+                continue
+            for a in range(mdp.A):
+                s = mdp.transition(s_prime, a)
+                updatable[s] = True
+
+        # Set updateable values to 0 so we can actually update later.
+        # Leave other values as is.
+        for s, flag in enumerate(updatable):
+            if flag:
+                V_prime[s] = 0
+
+        if verbose:
+            print(it, updatable.reshape(mdp.rows, mdp.cols))
+
         for s_prime in range(mdp.S):
             for a in range(mdp.A):
                 s = mdp.transition(s_prime, a)
+                if not updatable[s]:
+                    continue
                 if fixed_init and s == init_state:
                     continue
                 V_prime[s] += np.exp(mdp.rewards[s_prime, a]/beta + V[s_prime])
 
         # This warning will appear when taking the log of float(-inf) in V_prime.
         warnings.filterwarnings("ignore", "divide by zero encountered in log")
-        V_prime = np.log(V_prime)
+        np.log(V_prime, out=V_prime, where=updatable)
         warnings.resetwarnings()
 
         if fixed_init:
             V_prime[init_state] = fixed_init_val
 
         max_update = _calc_max_update(V, V_prime)
+        if verbose:
+            print("max_update", max_update)
+        if max_update < update_threshold:
+            break
+
+        # Various warnings for subtracting -inf from -inf and processing the
+        # resulting nan.
+        warnings.filterwarnings("ignore", "invalid value encountered in abs")
+        warnings.filterwarnings("ignore", "invalid value encountered in subtract")
+        warnings.filterwarnings("ignore", "invalid value encountered in greater")
+
+        # XXX: This can be optimized slightly. By storing subtract result and abs
+        # result in the same array.
+        # If a state updates by more than update_threshold, then it is dirty.
+        np.greater(np.abs(V_prime - V), update_threshold, out=dirty)
+
+        warnings.filterwarnings("ignore", "invalid value encountered in abs")
+        warnings.filterwarnings("ignore", "invalid value encountered in subtract")
+        warnings.filterwarnings("ignore", "divide by zero encountered in greater")
+
         it += 1
-        V = V_prime
+        V[:] = V_prime
 
     return V

@@ -18,7 +18,7 @@ class TestUtilities(TestCase):
 
 class TestBackwardsValueIter(TestCase):
     def test_initial(self):
-        g = GridWorldMDP(3, 1, {(0, 0): -1, (0, 1): 1, (1, 1): 2, (1, 0): 3})
+        g = GridWorldMDP(3, 1, {(0, 0): -1, (1, 0): 3})
         t.assert_allclose(backwards_value_iter(g, 0, max_iters=0), [0, ni, ni])
         t.assert_allclose(backwards_value_iter(g, 1, max_iters=0), [ni, 0, ni])
         t.assert_allclose(backwards_value_iter(g, 2, max_iters=0), [ni, ni, 0])
