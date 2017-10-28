@@ -280,7 +280,7 @@ def infer_occupancies(mdp, traj, beta=1, prior=None, dest_set=None,
         goal_val = -V_b[C] + np.log(P_dest[C])
         D_dest += np.exp(
                 forwards_value_iter(mdp, C, beta=beta,
-                    fixed_goal=True, fixed_goal_val=goal_val, verbose=verbose))
+                    fixed_goal_val=goal_val, verbose=verbose))
 
     # The paper says to multiply by exp(V_a), but exp(V_b) gets better results
     # and seems more intuitive.
@@ -400,7 +400,7 @@ def infer_occupancies_from_start(mdp, init_state, beta=1, prior=None, dest_set=N
         goal_val = -V[C] + np.log(prior[C])
         D_dest += np.exp(
                 forwards_value_iter(mdp, C, beta=beta,
-                    fixed_goal=True, fixed_goal_val=goal_val, verbose=verbose))
+                    fixed_goal_val=goal_val, verbose=verbose))
 
     D_dest *= np.exp(V)
     return D_dest
