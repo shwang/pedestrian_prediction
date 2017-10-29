@@ -124,7 +124,7 @@ def sample_action(mdp, state, goal, beta=1, cached_values=None):
     return np.random.choice(list(range(mdp.A)), p=P)
 
 def infer_destination(mdp, traj, beta=1, prior=None, dest_set=None,
-        V_a_cached=None, V_b_cached=None,
+        V_a_cached=None, V_b_cached=None, vi_precision=1e-5,
         backwards_value_iter_fn=backwards_value_iter, verbose=False):
     """
     Calculate the probability of each destination given the trajectory so far.
@@ -199,24 +199,28 @@ def infer_destination(mdp, traj, beta=1, prior=None, dest_set=None,
 
     if V_a_cached is None:
         S_a = traj[0][0]
-        V_a = backwards_value_iter_fn(mdp, S_a, beta=beta, verbose=verbose)
+        V_a = backwards_value_iter_fn(mdp, S_a, beta=beta, update_threshold=vi_precision,
+                verbose=verbose)
     else:
         V_a = V_a_cached
 
     if V_b_cached is None:
         S_b = mdp.transition(*traj[-1])
-        V_b = backwards_value_iter_fn(mdp, S_b, beta=beta, verbose=verbose)
+        V_b = backwards_value_iter_fn(mdp, S_b, beta=beta, update_threshold=vi_precision,
+                verbose=verbose)
     else:
         V_b = V_b_cached
 
-    P_dest = np.zeros(mdp.S)
+    # TODO: correct numerical errors due to large magnitude before exp
+    # updatable = (prior > 0)
+    # P_dest = traj_reward + V_b - V_a
     for C in range(mdp.S):
         P_dest[C] = np.exp(traj_reward + V_b[C] - V_a[C])
         if prior is not None:
             P_dest[C] *= prior[C]
     return _normalize(P_dest)
 
-def infer_occupancies(mdp, traj, beta=1, prior=None, dest_set=None,
+def infer_occupancies(mdp, traj, beta=1, prior=None, dest_set=None, vi_precision=1e-7,
         backwards_value_iter_fn=backwards_value_iter, verbose=False):
     """
     Calculate the expected number of times each state will be occupied given the
@@ -264,9 +268,11 @@ def infer_occupancies(mdp, traj, beta=1, prior=None, dest_set=None,
     prior = _normalize(prior)
 
     S_a = traj[0][0]
-    V_a = backwards_value_iter_fn(mdp, S_a, beta=beta, verbose=verbose)
+    V_a = backwards_value_iter_fn(mdp, S_a, beta=beta, update_threshold=vi_precision,
+            verbose=verbose)
     S_b = mdp.transition(*traj[-1])
-    V_b = backwards_value_iter_fn(mdp, S_b, beta=beta, verbose=verbose)
+    V_b = backwards_value_iter_fn(mdp, S_b, beta=beta, update_threshold=vi_precision,
+            verbose=verbose)
 
     P_dest = infer_destination(mdp, traj, beta=beta, prior=prior, dest_set=dest_set,
             V_a_cached=V_a, V_b_cached=V_b,
