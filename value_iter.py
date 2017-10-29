@@ -62,75 +62,16 @@ def dijkstra(mdp, init_state, verbose=False):
             pq.put((-reward + cost, s_prime))
 
     return -R_star
+def forwards_value_iter(*args, **kwargs):
+    kwargs['forwards'] = True
+    return _value_iter(*args, **kwargs)
 
-def forwards_value_iter(mdp, goal_state, update_threshold=1e-7, max_iters=None,
-         fixed_goal_val=0, beta=1, verbose=False):
-    """
-    Approximate the softmax value of various initial states, given the goal state.
+def backwards_value_iter(*args, **kwargs):
+    kwargs['forwards'] = False
+    return _value_iter(*args, **kwargs)
 
-    Params:
-        mdp [GridWorldMDP]: The MDP.
-        goal_state [int]: A goal state, the only state in which the Absorb action is legal
-            and the initial value is 0. All other states start with initial value of
-            -inf.
-        update_threshold [float]: (optional) When the magnitude of all value updates is
-            less than update_threshold, value iteration will return its approximate solution.
-        max_iters [int]: (optional) An upper bound on the number of value iterations to
-            perform. If this upper bound is reached, then iteration will cease regardless
-            of whether `update_threshold`'s condition is met.
-        fixed_goal_val [float]: (optional) Fix the goal_state's value at this value.
-        beta [float]: (optional) The softmax agent's irrationality constant.
-            Beta must be nonnegative. If beta=0, then the softmax agent
-            always acts optimally. If beta=float('inf'), then the softmax agent
-            acts completely randomly.
-        verbose [bool]: (optional) If true, then print the result of each iteration.
-
-    Returns:
-        value [np.ndarray]: If `states` is not given, a length S array, where the ith
-            element is the value of reaching state i starting from init_state. If
-            `states` is given, a length `len(states)` array where the ith element
-            is the value of reaching state `states[i]` starting from init_state.
-    """
-    assert beta >= 0, beta
-    assert goal_state >= 0 and goal_state < mdp.S, goal_state
-
-    V = np.full(mdp.S, float('-inf'))
-    V[goal_state] = 0
-    if max_iters == None:
-        max_iters = float('inf')
-
-    # Reconfigure rewards to allow ABSORB action at goal_state.
-    mdp = mdp.copy()
-    mdp.set_goal(goal_state)
-
-    max_update = float('inf')
-    it = 0
-    while max_update > update_threshold and it < max_iters:
-        if verbose:
-            print(it, V.reshape(mdp.rows, mdp.cols))
-        V_prime = np.zeros(mdp.S)
-        for s in range(mdp.S):
-            for a in range(mdp.A):
-                if s == goal_state:
-                    continue
-                s_prime = mdp.transition(s, a)
-                V_prime[s] += np.exp(mdp.rewards[s, a]/beta + V[s_prime])
-
-        # This warning will appear when taking the log of float(-inf) in V_prime.
-        warnings.filterwarnings("ignore", "divide by zero encountered in log")
-        V_prime = np.log(V_prime)
-        warnings.resetwarnings()
-
-        V_prime[goal_state] = fixed_goal_val
-
-        max_update = _calc_max_update(V, V_prime)
-        it += 1
-        V = V_prime
-
-    return V
-
-def backwards_value_iter(mdp, init_state, update_threshold=1e-8, max_iters=None,
-        fixed_init_val=0, beta=1, verbose=False):
+def _value_iter(mdp, init_state, update_threshold=1e-8, max_iters=None,
+        fixed_init_val=0, beta=1, forwards=False, verbose=False):
     """
     Approximate the softmax value of reaching various destination states, starting
     from a given initial state.
@@ -147,6 +88,8 @@ def backwards_value_iter(mdp, init_state, update_threshold=1e-8, max_iters=None,
             perform. If this upper bound is reached, then iteration will cease regardless
             of whether `update_threshold`'s condition is met.
         fixed_init_val [float]: (optional) Fix the initial state's value at this value.
+        forwards [bool]: (optional) Choose between forwards or backwards value iteration.
+            By default, False, indicating backwards value iteration.
         beta [float]: (optional) The softmax agent's irrationality constant.
             Beta must be nonnegative. If beta=0, then the softmax agent
             always acts optimally. If beta=float('inf'), then the softmax agent
@@ -202,12 +145,20 @@ def backwards_value_iter(mdp, init_state, update_threshold=1e-8, max_iters=None,
         if verbose:
             print(it, updatable.reshape(mdp.rows, mdp.cols))
 
-        for s_prime in range(mdp.S):
-            for a in range(mdp.A):
-                s = mdp.transition(s_prime, a)
+        if forwards:
+            for s in range(mdp.S):
                 if not updatable[s]:
                     continue
-                V_prime[s] += np.exp(mdp.rewards[s_prime, a]/beta + V[s_prime])
+                for a in range(mdp.A):
+                    s_prime = mdp.transition(s, a)
+                    V_prime[s] += np.exp(mdp.rewards[s, a]/beta + V[s_prime])
+        else:
+            for s_prime in range(mdp.S):
+                for a in range(mdp.A):
+                    s = mdp.transition(s_prime, a)
+                    if not updatable[s]:
+                        continue
+                    V_prime[s] += np.exp(mdp.rewards[s_prime, a]/beta + V[s_prime])
 
         # This warning will appear when taking the log of float(-inf) in V_prime.
         warnings.filterwarnings("ignore", "divide by zero encountered in log")
