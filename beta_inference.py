@@ -34,8 +34,8 @@ def _make_harmonic(k, s=2, base=0.2):
         return max(k * 1/(s*i+1), base)
     return harmonic
 
-def beta_binary_search(g, traj, goal, guess=None, grad_threshold=1e-9, beta_threshold=5e-2,
-        max_iters=30, min_beta=0.8, max_beta=21, verbose=False):
+def beta_binary_search(g, traj, goal, guess=None, grad_threshold=1e-9, beta_threshold=5e-5,
+        min_iters=10, max_iters=30, min_beta=0.7, max_beta=11, verbose=False):
 
     if len(traj) == 0:
         return guess
@@ -48,14 +48,14 @@ def beta_binary_search(g, traj, goal, guess=None, grad_threshold=1e-9, beta_thre
         if verbose:
             print("i={}\t mid={}\t grad={}".format(i, mid, grad))
 
-        if abs(grad) < grad_threshold:
+        if i >= min_iters and abs(grad) < grad_threshold:
             break
 
         if grad > 0:
             lo = mid
         else:
             hi = mid
-        if hi - lo < beta_threshold:
+        if i >= min_iters and hi - lo < beta_threshold:
             break
 
         mid = (lo + hi)/2
@@ -64,10 +64,8 @@ def beta_binary_search(g, traj, goal, guess=None, grad_threshold=1e-9, beta_thre
         print("final answer: beta=", mid)
     return mid
 
-
-
 def beta_gradient_ascent(g, traj, goal, guess=3, learning_rate=_make_harmonic(5),
-    verbose=False, threshold=1e-9, max_iters=30, max_update=4,
+    verbose=False, threshold=1e-9, min_iters=10, max_iters=30, max_update=4,
     min_beta=0.1, max_beta=11):
 
     if len(traj) == 0:
@@ -95,22 +93,12 @@ def beta_gradient_ascent(g, traj, goal, guess=3, learning_rate=_make_harmonic(5)
         else:
             curr -= diff * 130
 
-
         if verbose:
             history.append((curr, _compute_score(g, traj, goal, curr)))
             print("{}: beta={}\tscore={}\tgrad={}\tlearning_rate={}\tdiff={}".format(
                 i, curr, history[-1][1], grad, alpha(i), diff))
 
-        if abs(diff) < threshold:
+        if i >= min_iters and abs(diff) < threshold:
             break
-
-        if curr > max_beta:
-            curr = max_beta
-            if _compute_gradient(curr) > 0:
-                break
-        elif curr < min_beta:
-            curr = min_beta
-            if _compute_gradient(curr) < 0:
-                break
 
     return curr
