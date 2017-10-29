@@ -214,6 +214,7 @@ def infer_destination(mdp, traj, beta=1, prior=None, dest_set=None,
     # TODO: correct numerical errors due to large magnitude before exp
     # updatable = (prior > 0)
     # P_dest = traj_reward + V_b - V_a
+    P_dest = np.zeros(mdp.S)
     for C in range(mdp.S):
         P_dest[C] = np.exp(traj_reward + V_b[C] - V_a[C])
         if prior is not None:
