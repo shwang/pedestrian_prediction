@@ -145,24 +145,51 @@ def _value_iter(mdp, init_state, update_threshold=1e-8, max_iters=None,
         if verbose:
             print(it, updatable.reshape(mdp.rows, mdp.cols))
 
+        temp = np.empty(mdp.S)
+        exp_max = np.zeros(mdp.S)
         if forwards:
             for s in range(mdp.S):
                 if not updatable[s]:
                     continue
-                for a in range(mdp.A):
-                    s_prime = mdp.transition(s, a)
-                    V_prime[s] += np.exp(mdp.rewards[s, a]/beta + V[s_prime])
+
+                # XXX: optimization: cache this length
+                N = len(mdp.neighbors[s])
+                exp_max[s] = -np.inf
+
+                for i, (a, s_prime) in enumerate(mdp.neighbors[s]):
+                    temp[i] = mdp.rewards[s, a]/beta + V[s_prime]
+                    if temp[i] == -np.inf:
+                        continue
+                    if temp[i] > exp_max[s]:
+                        exp_max[s] = temp[i]
+
+                before_exp = temp[:N]
+                if exp_max[s] > -np.inf:
+                    before_exp -= exp_max[s]
+                V_prime[s] = sum(np.exp(before_exp))
         else:
             for s_prime in range(mdp.S):
-                for a in range(mdp.A):
-                    s = mdp.transition(s_prime, a)
-                    if not updatable[s]:
+                if not updatable[s_prime]:
+                    continue
+                N = len(mdp.reverse_neighbors[s_prime])
+                exp_max[s_prime] = -np.inf
+
+                for i, (a, s) in enumerate(mdp.reverse_neighbors[s_prime]):
+                    temp[i] = mdp.rewards[s, a]/beta + V[s]
+                    if temp[i] == -np.inf:
                         continue
-                    V_prime[s] += np.exp(mdp.rewards[s_prime, a]/beta + V[s_prime])
+                    if temp[i] > exp_max[s_prime]:
+                        exp_max[s_prime] = temp[i]
+
+                before_exp = temp[:N]
+                if exp_max[s_prime] > -np.inf:
+                    before_exp -= exp_max[s_prime]
+                V_prime[s_prime] = sum(np.exp(before_exp))
 
         # This warning will appear when taking the log of float(-inf) in V_prime.
         warnings.filterwarnings("ignore", "divide by zero encountered in log")
         np.log(V_prime, out=V_prime, where=updatable)
+        np.add(V_prime, exp_max, out=V_prime, where=updatable)
         warnings.resetwarnings()
 
         V_prime[init_state] = fixed_init_val

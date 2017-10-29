@@ -66,6 +66,11 @@ class GridWorldMDP(MDP):
         rewards = np.zeros([S, A])
         rewards.fill(default_reward)
 
+        # neighbor[s] is a set of tuples (a, s_prime)
+        self.neighbors = [[] for _ in range(S)]
+        # reverse_neighbors is a set of tuples (a, s)
+        self.reverse_neighbors = [[] for _ in range(S)]
+
         self.transition_cached = np.empty([S, A], dtype=int)
 
         for s in range(S):
@@ -76,6 +81,8 @@ class GridWorldMDP(MDP):
                 if not illegal:
                     if coor in reward_dict:
                         rewards[s, a] = reward_dict[coor]
+                    self.neighbors[s].append((a, s_prime))
+                    self.reverse_neighbors[s_prime].append((a, s))
                 else:
                     rewards[s, a] = float('-inf')
 
