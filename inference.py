@@ -284,14 +284,14 @@ def infer_occupancies(mdp, traj, beta=1, prior=None, dest_set=None, vi_precision
             continue
 
         goal_val = -V_b[C] + np.log(P_dest[C])
-        D_dest += np.exp(
-                forwards_value_iter(mdp, C, beta=beta,
-                    fixed_goal_val=goal_val, verbose=verbose))
+
+        D_dest += forwards_value_iter(mdp, C, beta=beta,
+                    fixed_init_val=goal_val, verbose=verbose)
 
     # The paper says to multiply by exp(V_a), but exp(V_b) gets better results
     # and seems more intuitive.
-    D_dest *= np.exp(V_b)
-    return D_dest
+    D_dest += V_b
+    return np.exp(D_dest)
 
 # XXX: Cached occupancies?
 
@@ -404,9 +404,10 @@ def infer_occupancies_from_start(mdp, init_state, beta=1, prior=None, dest_set=N
             continue
 
         goal_val = -V[C] + np.log(prior[C])
-        D_dest += np.exp(
-                forwards_value_iter(mdp, C, beta=beta,
-                    fixed_goal_val=goal_val, verbose=verbose))
+        # TODO: This temporary implementation will break if there is more than
+        # one possible destination. For more information, review Ziebart.
+        D_dest += forwards_value_iter(mdp, C, beta=beta,
+                    fixed_init_val=goal_val, verbose=verbose)
 
-    D_dest *= np.exp(V)
-    return D_dest
+    D_dest += V
+    return np.exp(D_dest)
