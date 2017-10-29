@@ -1,11 +1,14 @@
+from __future__ import division
+from __future__ import absolute_import
 import numpy as np
 from numpy import random
 import random
 
 from value_iter import backwards_value_iter, forwards_value_iter, dijkstra
+from itertools import imap
 
 def _sum_rewards(mdp, traj):
-    return sum(map(lambda x: mdp.rewards[x[0], x[1]], traj))
+    return sum(imap(lambda x: mdp.rewards[x[0], x[1]], traj))
 
 def _normalize(vec):
     x = np.array(vec)
@@ -15,26 +18,26 @@ def _display(mdp, traj, init_state, goal_state, overlay=False):
     init_state = mdp.state_to_coor(init_state)
     goal_state = mdp.state_to_coor(goal_state)
 
-    visited = {mdp.state_to_coor(s) for s, a in traj}
+    visited = set(mdp.state_to_coor(s) for s, a in traj)
     if len(traj) > 0:
         visited.add(mdp.state_to_coor(mdp.transition(*traj[-1])))
     else:
         visited.add(init_state)
 
-    for r in range(mdp.rows):
-        line = ['_'] * mdp.cols
-        for c in range(mdp.cols):
+    for r in xrange(mdp.rows):
+        line = [u'_'] * mdp.cols
+        for c in xrange(mdp.cols):
             if (r, c) in visited:
-                line[c] = '#'
+                line[c] = u'#'
         if overlay:
             if r == init_state[0]:
-                line[init_state[1]] = 'A' if init_state in visited else 'a'
+                line[init_state[1]] = u'A' if init_state in visited else u'a'
             if r == goal_state[0]:
-                line[goal_state[1]] = 'G' if goal_state in visited else 'g'
-        print(line)
+                line[goal_state[1]] = u'G' if goal_state in visited else u'g'
+        print line
 
 def simulate(mdp, initial_state, goal_state, beta=1, path_length=None):
-    """
+    u"""
     Generate a sample trajectory of a softmax agent's behavior.
 
     Params:
@@ -62,7 +65,7 @@ def simulate(mdp, initial_state, goal_state, beta=1, path_length=None):
     V = forwards_value_iter(mdp, goal_state, beta=beta, max_iters=1000)
 
     if path_length == None:
-        path_length = float('inf')
+        path_length = float(u'inf')
 
     traj = []
     s = initial_state
@@ -76,7 +79,7 @@ def simulate(mdp, initial_state, goal_state, beta=1, path_length=None):
     return traj
 
 def sample_action(mdp, state, goal, beta=1, cached_values=None):
-    """
+    u"""
     Choose an action probabilistically, like a softmax agent would.
     Params:
         mdp [GridWorldMDP]: The MDP that the agent is playing.
@@ -98,7 +101,7 @@ def sample_action(mdp, state, goal, beta=1, cached_values=None):
     #                   Get rid of this possibility for non-goal states.
     if beta == np.inf:
         # Use uniform choice; would otherwise result in P = 0/0 = NaN.
-        return np.random.choice(list(range(mdp.A)))
+        return np.random.choice(range(mdp.A))
 
     if cached_values is not None:
         V = cached_values
@@ -107,7 +110,7 @@ def sample_action(mdp, state, goal, beta=1, cached_values=None):
         V = forwards_value_iter(mdp, goal, max_iters=1000)
 
     P = np.zeros(mdp.A)
-    for a in range(mdp.A):
+    for a in xrange(mdp.A):
         s_prime = mdp.transition(state, a)
         P[a] = mdp.rewards[state, a]/beta + V[s_prime] - V[state]
 
@@ -121,12 +124,12 @@ def sample_action(mdp, state, goal, beta=1, cached_values=None):
 
     P = np.exp(P)
     P = P / sum(P)
-    return np.random.choice(list(range(mdp.A)), p=P)
+    return np.random.choice(range(mdp.A), p=P)
 
 def infer_destination(mdp, traj, beta=1, prior=None, dest_set=None,
         V_a_cached=None, V_b_cached=None, vi_precision=1e-5,
         backwards_value_iter_fn=backwards_value_iter, verbose=False):
-    """
+    u"""
     Calculate the probability of each destination given the trajectory so far.
 
     Params:
@@ -172,7 +175,7 @@ def infer_destination(mdp, traj, beta=1, prior=None, dest_set=None,
     assert V_b_cached is None or len(V_b_cached) == mdp.S, V_b_cached
 
     if dest_set != None:
-        all_set = {i for i in range(mdp.S)}
+        all_set = set(i for i in xrange(mdp.S))
         assert dest_set.issubset(all_set), (dest_set, mdp.S)
 
         # If there is only one dest, all probability goes to that dest.
@@ -195,7 +198,7 @@ def infer_destination(mdp, traj, beta=1, prior=None, dest_set=None,
     if traj_reward == -np.inf:
         # Something is probably wrong with our model if we observed agent
         # choosing an illegal action other than ABSORB
-        print("Warning: -inf traj_reward in infer_destination.")
+        print u"Warning: -inf traj_reward in infer_destination."
 
     if V_a_cached is None:
         S_a = traj[0][0]
@@ -215,7 +218,7 @@ def infer_destination(mdp, traj, beta=1, prior=None, dest_set=None,
     # updatable = (prior > 0)
     # P_dest = traj_reward + V_b - V_a
     P_dest = np.zeros(mdp.S)
-    for C in range(mdp.S):
+    for C in xrange(mdp.S):
         P_dest[C] = np.exp(traj_reward + V_b[C] - V_a[C])
         if prior is not None:
             P_dest[C] *= prior[C]
@@ -223,7 +226,7 @@ def infer_destination(mdp, traj, beta=1, prior=None, dest_set=None,
 
 def infer_occupancies(mdp, traj, beta=1, prior=None, dest_set=None, vi_precision=1e-7,
         backwards_value_iter_fn=backwards_value_iter, verbose=False):
-    """
+    u"""
     Calculate the expected number of times each state will be occupied given the
     trajectory so far.
 
@@ -261,7 +264,7 @@ def infer_occupancies(mdp, traj, beta=1, prior=None, dest_set=None, vi_precision
         prior = [1] * mdp.S
 
     if dest_set != None:
-        all_set = set(range(mdp.S))
+        all_set = set(xrange(mdp.S))
         assert dest_set.issubset(all_set), (dest_set, mdp.S)
         impossible_set = all_set - dest_set
         for d in impossible_set:
@@ -280,7 +283,7 @@ def infer_occupancies(mdp, traj, beta=1, prior=None, dest_set=None, vi_precision
             backwards_value_iter_fn=backwards_value_iter_fn)
 
     D_dest = np.zeros(mdp.S)
-    for C in range(mdp.S):
+    for C in xrange(mdp.S):
         if prior[C] == 0:
             continue
 
@@ -299,7 +302,7 @@ def infer_occupancies(mdp, traj, beta=1, prior=None, dest_set=None, vi_precision
 def infer_temporal_occupancies(mdp, traj, T, c_0, sigma_0, sigma_1,
         beta=1, prior=None, dest_set=None,
         backwards_value_iter_fn=backwards_value_iter, verbose=False):
-    """
+    u"""
     Given a softmax agent's prior trajectory, approximate the probability
     that a state will be occupied by the softmax agent at a given timestep
     for the next T timesteps, assuming that all trajectories by the agent
@@ -345,7 +348,7 @@ def infer_temporal_occupancies(mdp, traj, T, c_0, sigma_0, sigma_1,
 
     P_dest_t = np.ndarray([T, mdp.S])
 
-    for t in range(1, T + 1):
+    for t in xrange(1, T + 1):
         numer = -np.square(c_0*t - R_star_b)
         denom = 2*(sigma_0**2 + t*sigma_1**2)
         P_dest_t[t-1] = np.exp(numer/denom)
@@ -357,7 +360,7 @@ def infer_temporal_occupancies(mdp, traj, T, c_0, sigma_0, sigma_1,
 
 def infer_occupancies_from_start(mdp, init_state, beta=1, prior=None, dest_set=None,
         backwards_value_iter_fn=backwards_value_iter, verbose=False):
-    """
+    u"""
     Calculate the expected number of times each state will be occupied given the
     trajectory so far.
 
@@ -390,7 +393,7 @@ def infer_occupancies_from_start(mdp, init_state, beta=1, prior=None, dest_set=N
         prior = [1] * mdp.S
 
     if dest_set != None:
-        all_set = set(range(mdp.S))
+        all_set = set(xrange(mdp.S))
         assert dest_set.issubset(all_set), (dest_set, mdp.S)
         impossible_set = all_set - dest_set
         for d in impossible_set:
@@ -400,7 +403,7 @@ def infer_occupancies_from_start(mdp, init_state, beta=1, prior=None, dest_set=N
     V = backwards_value_iter_fn(mdp, init_state, beta=beta, verbose=verbose)
 
     D_dest = np.zeros(mdp.S)
-    for C in range(mdp.S):
+    for C in xrange(mdp.S):
         if prior[C] == 0:
             continue
 

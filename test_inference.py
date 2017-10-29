@@ -1,3 +1,5 @@
+from __future__ import division
+from __future__ import absolute_import
 from unittest import TestCase
 import numpy as np
 from numpy import testing as t
@@ -28,17 +30,17 @@ class TestUtilities(TestCase):
 
 class TestInferDestination(TestCase):
     def make_mock_backwards_value_iter(self, V_A, V_B):
-        i = 0
+        class Closure(object):
+            i = 0
         def backwards_value_iter_mock(*args, **kwargs):
-            nonlocal i
-            if i == 0:
-                i += 1
+            if Closure.i == 0:
+                Closure.i += 1
                 return V_A
-            elif i == 1:
-                i += 1
+            elif Closure.i == 1:
+                Closure.i += 1
                 return V_B
             else:
-                raise AssertionError("Expected only two calls to backwards_value_iter")
+                raise AssertionError(u"Expected only two calls to backwards_value_iter")
         return backwards_value_iter_mock
 
     def test_easy_no_prior(self):
@@ -84,7 +86,7 @@ class TestInferDestination(TestCase):
 
         P_full = infer_destination(g, traj)
 
-        P_start_only = infer_destination(g, traj, dest_set={0})
+        P_start_only = infer_destination(g, traj, dest_set=set([0]))
         t.assert_allclose(P_start_only[0], 1)
 
         P_should_be_zeros = np.copy(P_start_only)
@@ -94,7 +96,7 @@ class TestInferDestination(TestCase):
 
         p_a = P_full[0]
         p_b = P_full[10]
-        P_two = infer_destination(g, traj, dest_set={0, 10})
+        P_two = infer_destination(g, traj, dest_set=set([0, 10]))
         expected = np.zeros(P_two.shape)
         expected[0] = p_a / (p_a + p_b)
         expected[10] = p_b / (p_a + p_b)

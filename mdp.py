@@ -1,9 +1,10 @@
+from __future__ import absolute_import
 from enum import IntEnum
 import numpy as np
 
-class MDP:
+class MDP(object):
     def __init__(self, S, A, rewards, transition):
-        """
+        u"""
         Params:
             S [int]: The number of states.
             A [int]: The number of actions.
@@ -37,7 +38,7 @@ class GridWorldMDP(MDP):
         ABSORB = 8
 
     def __init__(self, rows, cols, reward_dict, goal_state=None, default_reward=0):
-        """
+        u"""
         An agent in a GridWorldMDP can move between adjacent/diagonal cells.
 
         If the agent chooses an illegal action it receives a float('-inf') reward
@@ -67,14 +68,14 @@ class GridWorldMDP(MDP):
         rewards.fill(default_reward)
 
         # neighbor[s] is a set of tuples (a, s_prime)
-        self.neighbors = [[] for _ in range(S)]
+        self.neighbors = [[] for _ in xrange(S)]
         # reverse_neighbors is a set of tuples (a, s)
-        self.reverse_neighbors = [[] for _ in range(S)]
+        self.reverse_neighbors = [[] for _ in xrange(S)]
 
         self.transition_cached = np.empty([S, A], dtype=int)
 
-        for s in range(S):
-            for a in range(A):
+        for s in xrange(S):
+            for a in xrange(A):
                 s_prime, illegal = self._transition_helper(s, a, alert_illegal=True)
                 self.transition_cached[s, a] = s_prime
                 coor = self.state_to_coor(s_prime)
@@ -84,9 +85,9 @@ class GridWorldMDP(MDP):
                     self.neighbors[s].append((a, s_prime))
                     self.reverse_neighbors[s_prime].append((a, s))
                 else:
-                    rewards[s, a] = float('-inf')
+                    rewards[s, a] = float(u'-inf')
 
-        super().__init__(S, A, rewards, self._transition)
+        super(GridWorldMDP, self).__init__(S, A, rewards, self._transition)
 
         self.state_rewards = np.full([S], default_reward)
         for (r, c), reward in reward_dict.items():
@@ -127,7 +128,7 @@ class GridWorldMDP(MDP):
         elif a == self.Actions.ABSORB:
             pass
         else:
-            raise BaseException("undefined action {}".format(a))
+            raise BaseException(u"undefined action {}".format(a))
 
         illegal = False
         if r_prime < 0 or r_prime >= self.rows or c_prime < 0 or c_prime >= self.cols:
@@ -142,7 +143,7 @@ class GridWorldMDP(MDP):
             return s_prime
 
     def set_goal(self, goal_state):
-        """
+        u"""
         Reconfigure the goal state in this GridWorldMDP by allowing an agent at
         the goal state to use the ABSORB action at no cost. At all other states,
         ABSORB will be illegal (i.e., incur inf cost).
@@ -150,19 +151,19 @@ class GridWorldMDP(MDP):
         Params:
             goal_state: The new goal. Overrides previous goals.
         """
-        self.rewards[:, self.Actions.ABSORB].fill(float('-inf'))
+        self.rewards[:, self.Actions.ABSORB].fill(float(u'-inf'))
         if goal_state != None:
             self.rewards[goal_state, self.Actions.ABSORB] = 0
 
     def set_all_goals(self):
-        """
+        u"""
         (Experimental)
         Allow ABSORB at every state.
         """
         self.rewards[:, self.Actions.ABSORB].fill(0)
 
     def coor_to_state(self, r, c):
-        """
+        u"""
         Params:
             r [int]: The state's row.
             c [int]: The state's column.
@@ -171,12 +172,12 @@ class GridWorldMDP(MDP):
             s [int]: The state number associated with the given coordinates in a standard
                 grid world.
         """
-        assert 0 <= r < self.rows, "invalid (rows, r)={}".format((self.rows, r))
-        assert 0 <= c < self.cols, "invalid (cols, c)={}".format((self.cols, c))
+        assert 0 <= r < self.rows, u"invalid (rows, r)={}".format((self.rows, r))
+        assert 0 <= c < self.cols, u"invalid (cols, c)={}".format((self.cols, c))
         return r * self.cols + c
 
     def state_to_coor(self, s):
-        """
+        u"""
         Params:
             s [int]: The state.
 

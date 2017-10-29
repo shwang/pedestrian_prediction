@@ -1,21 +1,24 @@
+from __future__ import division
+from __future__ import absolute_import
 import numpy as np
-import queue
+import Queue
 import warnings
+from itertools import izip
 
 def _calc_max_update(V, V_prime):
-    """
+    u"""
     Use this rather than max(np.absolute(V_prime - V)) because an unchanged value
     of float('-inf') would result in a NaN change, when it should actually result
     in a 0 change.
     """
 
     assert V.shape == V_prime.shape, (V, V_prime)
-    assert float('nan') not in V, V
-    assert float('nan') not in V_prime, V_prime
+    assert float(u'nan') not in V, V
+    assert float(u'nan') not in V_prime, V_prime
 
-    max_update = float('-inf')
-    for v, v_p in zip(V, V_prime):
-        if v == v_p == float('-inf'):
+    max_update = float(u'-inf')
+    for v, v_p in izip(V, V_prime):
+        if v == v_p == float(u'-inf'):
             # v - v_p would return NaN, but in our simulation, this is actually
             # a zero update.
             max_update = max(max_update, 0)
@@ -25,7 +28,7 @@ def _calc_max_update(V, V_prime):
     return max_update
 
 def dijkstra(mdp, init_state, verbose=False):
-    """
+    u"""
     Calculate the reward of the optimal trajectory to each state, starting from
     `init_state`. Runs in |S| log |S| time, where |S| is the number of states.
 
@@ -43,7 +46,7 @@ def dijkstra(mdp, init_state, verbose=False):
     assert (mdp.rewards <= 0).all()
 
     R_star = np.ndarray(mdp.S)
-    pq = queue.PriorityQueue()
+    pq = Queue.PriorityQueue()
     visited = set()
     # entry := (cost, node)
     pq.put((0, init_state))
@@ -63,16 +66,16 @@ def dijkstra(mdp, init_state, verbose=False):
 
     return -R_star
 def forwards_value_iter(*args, **kwargs):
-    kwargs['forwards'] = True
+    kwargs[u'forwards'] = True
     return _value_iter(*args, **kwargs)
 
 def backwards_value_iter(*args, **kwargs):
-    kwargs['forwards'] = False
+    kwargs[u'forwards'] = False
     return _value_iter(*args, **kwargs)
 
 def _value_iter(mdp, init_state, update_threshold=1e-8, max_iters=None,
         fixed_init_val=0, beta=1, forwards=False, verbose=False, super_verbose=False):
-    """
+    u"""
     Approximate the softmax value of reaching various destination states, starting
     from a given initial state.
 
@@ -105,10 +108,10 @@ def _value_iter(mdp, init_state, update_threshold=1e-8, max_iters=None,
     assert beta >= 0, beta
     assert init_state >= 0 and init_state < mdp.S, init_state
 
-    V = np.full(mdp.S, float('-inf'))
+    V = np.full(mdp.S, float(u'-inf'))
     V[init_state] = 0
     if max_iters == None:
-        max_iters = float('inf')
+        max_iters = float(u'inf')
 
     mdp = mdp.copy()
 
@@ -125,14 +128,14 @@ def _value_iter(mdp, init_state, update_threshold=1e-8, max_iters=None,
 
     while it < max_iters:
         if verbose or super_verbose:
-            print(it, V.reshape(mdp.rows, mdp.cols))
+            print it, V.reshape(mdp.rows, mdp.cols)
 
         # If a state is dirty or has dirty neighbours, then it is updatable.
         updatable[:] = dirty
         for s_prime, dirt in enumerate(dirty):
             if not dirt:
                 continue
-            for a in range(mdp.A):
+            for a in xrange(mdp.A):
                 s = mdp.transition(s_prime, a)
                 updatable[s] = True
 
@@ -143,12 +146,12 @@ def _value_iter(mdp, init_state, update_threshold=1e-8, max_iters=None,
                 V_prime[s] = 0
 
         if super_verbose:
-            print(it, updatable.reshape(mdp.rows, mdp.cols))
+            print it, updatable.reshape(mdp.rows, mdp.cols)
 
         temp = np.empty(mdp.S)
         exp_max = np.zeros(mdp.S)
         if forwards:
-            for s in range(mdp.S):
+            for s in xrange(mdp.S):
                 if not updatable[s]:
                     continue
 
@@ -168,7 +171,7 @@ def _value_iter(mdp, init_state, update_threshold=1e-8, max_iters=None,
                     before_exp -= exp_max[s]
                 V_prime[s] = sum(np.exp(before_exp))
         else:
-            for s_prime in range(mdp.S):
+            for s_prime in xrange(mdp.S):
                 if not updatable[s_prime]:
                     continue
                 N = len(mdp.reverse_neighbors[s_prime])
@@ -187,7 +190,7 @@ def _value_iter(mdp, init_state, update_threshold=1e-8, max_iters=None,
                 V_prime[s_prime] = sum(np.exp(before_exp))
 
         # This warning will appear when taking the log of float(-inf) in V_prime.
-        warnings.filterwarnings("ignore", "divide by zero encountered in log")
+        warnings.filterwarnings(u"ignore", u"divide by zero encountered in log")
         np.log(V_prime, out=V_prime, where=updatable)
         np.add(V_prime, exp_max, out=V_prime, where=updatable)
         warnings.resetwarnings()
@@ -196,24 +199,24 @@ def _value_iter(mdp, init_state, update_threshold=1e-8, max_iters=None,
 
         max_update = _calc_max_update(V, V_prime)
         if super_verbose:
-            print("max_update", max_update)
+            print u"max_update", max_update
         if max_update < update_threshold:
             break
 
         # Various warnings for subtracting -inf from -inf and processing the
         # resulting nan.
-        warnings.filterwarnings("ignore", "invalid value encountered in abs")
-        warnings.filterwarnings("ignore", "invalid value encountered in subtract")
-        warnings.filterwarnings("ignore", "invalid value encountered in greater")
+        warnings.filterwarnings(u"ignore", u"invalid value encountered in abs")
+        warnings.filterwarnings(u"ignore", u"invalid value encountered in subtract")
+        warnings.filterwarnings(u"ignore", u"invalid value encountered in greater")
 
         # XXX: This can be optimized slightly. By storing subtract result and abs
         # result in the same array.
         # If a state updates by more than update_threshold, then it is dirty.
         np.greater(np.abs(V_prime - V), update_threshold, out=dirty)
 
-        warnings.filterwarnings("ignore", "invalid value encountered in abs")
-        warnings.filterwarnings("ignore", "invalid value encountered in subtract")
-        warnings.filterwarnings("ignore", "divide by zero encountered in greater")
+        warnings.filterwarnings(u"ignore", u"invalid value encountered in abs")
+        warnings.filterwarnings(u"ignore", u"invalid value encountered in subtract")
+        warnings.filterwarnings(u"ignore", u"divide by zero encountered in greater")
 
         it += 1
         V[:] = V_prime

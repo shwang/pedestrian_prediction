@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 from unittest import TestCase
 import numpy as np
 
@@ -22,7 +23,7 @@ class TestGridWorldMDP(TestCase):
         self.state_coor_helper(1, 3, 1, 0, 1)
         self.state_coor_helper(1, 3, 2, 0, 2)
 
-    class DummyMDP():
+    class DummyMDP(object):
         def __init__(self, rows, cols):
             self.rows = rows
             self.cols = cols
@@ -55,7 +56,7 @@ class TestGridWorldMDP(TestCase):
 
     def test_transitions_illegal(self):
         g = GridWorldMDP(1, 1, {})
-        self.assert_illegality(g, 0, 0, set(Actions) - {Actions.ABSORB})
+        self.assert_illegality(g, 0, 0, set(Actions) - set([Actions.ABSORB]))
 
         g = GridWorldMDP(3, 3, {})
         illegal = [Actions.UP, Actions.LEFT, Actions.UP_LEFT, Actions.UP_RIGHT,
@@ -65,7 +66,7 @@ class TestGridWorldMDP(TestCase):
         self.assert_illegality(g, 1, 2,
                 [Actions.RIGHT, Actions.UP_RIGHT, Actions.DOWN_RIGHT])
         self.assert_illegality(g, 2, 2,
-                set(Actions) - {Actions.LEFT, Actions.UP, Actions.UP_LEFT, Actions.ABSORB})
+                set(Actions) - set([Actions.LEFT, Actions.UP, Actions.UP_LEFT, Actions.ABSORB]))
 
     def assert_transition(self, mdp, r, c, a, r_prime, c_prime):
         s = mdp.coor_to_state(r, c)
@@ -94,7 +95,7 @@ class TestGridWorldMDP(TestCase):
         self.assertEqual(reward, mdp.rewards[s, a])
 
     def test_rewards_illegal(self):
-        ni = float('-inf')
+        ni = float(u'-inf')
 
         g = GridWorldMDP(3, 3, {})
         self.assert_reward(g, 0, 0, Actions.LEFT, ni)

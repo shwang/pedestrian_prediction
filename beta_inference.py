@@ -1,10 +1,11 @@
+from __future__ import division
+from __future__ import absolute_import
 from value_iter import backwards_value_iter, forwards_value_iter
 from inference import sample_action, simulate, _display, infer_destination, \
     infer_occupancies, infer_occupancies_from_start, infer_temporal_occupancies, \
     _sum_rewards
 
 import numpy as np
-from numbers import Number
 
 def _compute_score(g, traj, goal, beta):
     assert len(traj) > 0, traj
@@ -20,10 +21,10 @@ def _compute_gradient(g, traj, goal, beta):
     assert len(traj) > 0, traj
     start = traj[0][0]
     R_traj = _sum_rewards(g, traj)
-    ex_1 = np.sum(np.multiply(infer_occupancies(g, traj, beta=beta, dest_set={goal}),
+    ex_1 = np.sum(np.multiply(infer_occupancies(g, traj, beta=beta, dest_set=set([goal])),
             g.state_rewards))
     ex_2 = np.sum(np.multiply(
-        infer_occupancies_from_start(g, start, beta=beta, dest_set={goal}),
+        infer_occupancies_from_start(g, start, beta=beta, dest_set=set([goal])),
         g.state_rewards))
 
     grad_log_score = (-1/beta**2) * (R_traj + ex_1 - ex_2)
@@ -42,11 +43,11 @@ def beta_binary_search(g, traj, goal, guess=None, grad_threshold=1e-9, beta_thre
 
     lo, hi = min_beta, max_beta
     mid = guess
-    for i in range(max_iters):
+    for i in xrange(max_iters):
         assert lo <= mid <= hi
         grad = _compute_gradient(g, traj, goal, mid)
         if verbose:
-            print("i={}\t mid={}\t grad={}".format(i, mid, grad))
+            print u"i={}\t mid={}\t grad={}".format(i, mid, grad)
 
         if i >= min_iters and abs(grad) < grad_threshold:
             break
@@ -61,7 +62,7 @@ def beta_binary_search(g, traj, goal, guess=None, grad_threshold=1e-9, beta_thre
         mid = (lo + hi)/2
 
     if verbose:
-        print("final answer: beta=", mid)
+        print u"final answer: beta=", mid
     return mid
 
 def beta_gradient_ascent(g, traj, goal, guess=3, learning_rate=_make_harmonic(5),
@@ -71,14 +72,14 @@ def beta_gradient_ascent(g, traj, goal, guess=3, learning_rate=_make_harmonic(5)
     if len(traj) == 0:
         return guess
 
-    if isinstance(learning_rate, Number):
+    if type(learning_rate) in [float, int]:
         alpha = lambda i: learning_rate
     else:
         alpha = learning_rate
 
     history = []
     curr = guess
-    for i in range(max_iters):
+    for i in xrange(max_iters):
         grad = _compute_gradient(g, traj, goal, curr)
         diff = alpha(i) * grad
 
@@ -95,8 +96,8 @@ def beta_gradient_ascent(g, traj, goal, guess=3, learning_rate=_make_harmonic(5)
 
         if verbose:
             history.append((curr, _compute_score(g, traj, goal, curr)))
-            print("{}: beta={}\tscore={}\tgrad={}\tlearning_rate={}\tdiff={}".format(
-                i, curr, history[-1][1], grad, alpha(i), diff))
+            print u"{}: beta={}\tscore={}\tgrad={}\tlearning_rate={}\tdiff={}".format(
+                i, curr, history[-1][1], grad, alpha(i), diff)
 
         if i >= min_iters and abs(diff) < threshold:
             break
