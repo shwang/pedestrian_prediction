@@ -71,7 +71,7 @@ def backwards_value_iter(*args, **kwargs):
     return _value_iter(*args, **kwargs)
 
 def _value_iter(mdp, init_state, update_threshold=1e-8, max_iters=None,
-        fixed_init_val=0, beta=1, forwards=False, verbose=False):
+        fixed_init_val=0, beta=1, forwards=False, verbose=False, super_verbose=False):
     """
     Approximate the softmax value of reaching various destination states, starting
     from a given initial state.
@@ -124,7 +124,7 @@ def _value_iter(mdp, init_state, update_threshold=1e-8, max_iters=None,
     V_prime[init_state] = 0
 
     while it < max_iters:
-        if verbose:
+        if verbose or super_verbose:
             print(it, V.reshape(mdp.rows, mdp.cols))
 
         # If a state is dirty or has dirty neighbours, then it is updatable.
@@ -142,7 +142,7 @@ def _value_iter(mdp, init_state, update_threshold=1e-8, max_iters=None,
             if flag:
                 V_prime[s] = 0
 
-        if verbose:
+        if super_verbose:
             print(it, updatable.reshape(mdp.rows, mdp.cols))
 
         temp = np.empty(mdp.S)
@@ -195,7 +195,7 @@ def _value_iter(mdp, init_state, update_threshold=1e-8, max_iters=None,
         V_prime[init_state] = fixed_init_val
 
         max_update = _calc_max_update(V, V_prime)
-        if verbose:
+        if super_verbose:
             print("max_update", max_update)
         if max_update < update_threshold:
             break
