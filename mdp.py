@@ -66,9 +66,12 @@ class GridWorldMDP(MDP):
         rewards = np.zeros([S, A])
         rewards.fill(default_reward)
 
+        self.transition_cached = np.empty([S, A], dtype=int)
+
         for s in range(S):
             for a in range(A):
-                s_prime, illegal = self._transition(s, a, alert_illegal=True)
+                s_prime, illegal = self._transition_helper(s, a, alert_illegal=True)
+                self.transition_cached[s, a] = s_prime
                 coor = self.state_to_coor(s_prime)
                 if not illegal:
                     if coor in reward_dict:
@@ -88,8 +91,12 @@ class GridWorldMDP(MDP):
         cp.rewards = np.copy(self.rewards)
         return cp
 
+    def _transition(self, s, a):
+        # import pdb; pdb.set_trace()
+        return self.transition_cached[s, a]
+
     # TODO: optimize so that we don't need to convert between state and coor.
-    def _transition(self, s, a, alert_illegal=False):
+    def _transition_helper(self, s, a, alert_illegal=False):
         r, c = self.state_to_coor(s)
         assert a >= 0 and a < len(self.Actions), a
 

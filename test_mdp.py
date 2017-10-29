@@ -48,7 +48,7 @@ class TestGridWorldMDP(TestCase):
         s = mdp.coor_to_state(r, c)
         for a in list(Actions):
             should_be_illegal = a in illegal_list
-            s_prime, illegal = mdp.transition(s, a, alert_illegal=True)
+            s_prime, illegal = mdp._transition_helper(s, a, alert_illegal=True)
             self.assertEqual(should_be_illegal, illegal, a)
             if should_be_illegal:
                 self.assertEqual(s, s_prime)
