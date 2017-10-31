@@ -67,14 +67,23 @@ def dijkstra(mdp, init_state, verbose=False):
     return -R_star
 def forwards_value_iter(*args, **kwargs):
     kwargs[u'forwards'] = True
+    if 'lazy_init_state' not in kwargs:
+        kwargs['lazy_init_state'] = True
+    # XXX: Does absorbing at goal cause Divergence (TM)?
+    # # We should be able to absorb at the goal.
+    # if "absorb" not in kwwargs:
+    #     kwargs['absorb'] = True
     return _value_iter(*args, **kwargs)
 
 def backwards_value_iter(*args, **kwargs):
     kwargs[u'forwards'] = False
+    if 'lazy_init_state' not in kwargs:
+        kwargs['lazy_init_state'] = False
     return _value_iter(*args, **kwargs)
 
 def _value_iter(mdp, init_state, update_threshold=1e-8, max_iters=None,
-        fixed_init_val=0, beta=1, forwards=False, verbose=False, super_verbose=False):
+        fixed_init_val=0, beta=1, forwards=False, lazy_init_state=False, absorb=False,
+        verbose=False, super_verbose=False):
     u"""
     Approximate the softmax value of reaching various destination states, starting
     from a given initial state.
@@ -91,16 +100,23 @@ def _value_iter(mdp, init_state, update_threshold=1e-8, max_iters=None,
             perform. If this upper bound is reached, then iteration will cease regardless
             of whether `update_threshold`'s condition is met.
         fixed_init_val [float]: (optional) Fix the initial state's value at this value.
-        forwards [bool]: (optional) Choose between forwards or backwards value iteration.
-            By default, False, indicating backwards value iteration.
         beta [float]: (optional) The softmax agent's irrationality constant.
             Beta must be nonnegative. If beta=0, then the softmax agent
             always acts optimally. If beta=float('inf'), then the softmax agent
             acts completely randomly.
+        forwards [bool]: (optional) Choose between forwards or backwards value iteration.
+            By default, False, indicating backwards value iteration.
+        lazy_init_state [bool]: (optional) (debugging) If False, perform a final mini-Bellman
+            update on V[init_state] after values have converged.  Otherwise, the
+            value of `V[init_state]` will be init_state value.
+        absorb [bool]: (optional) If True, then during value iteration, allow the Absorb
+            action at the init_state and remove the Absorb action from all other
+            states. This operation has no effect on the results if lazy_init_val
+            is True.
         verbose [bool]: (optional) If true, then print the result of each iteration.
 
     Returns:
-        value [np.ndarray]: If `states` is not given, a length S array, where the ith
+        V [np.ndarray]: If `states` is not given, a length S array, where the ith
             element is the value of reaching state i starting from init_state. If
             `states` is given, a length `len(states)` array where the ith element
             is the value of reaching state `states[i]` starting from init_state.
@@ -127,7 +143,9 @@ def _value_iter(mdp, init_state, update_threshold=1e-8, max_iters=None,
 
     # Execute one iteration. Returns True if converged.
     # Modifies dirty, updatable, V, and V_prime.
-    def _step():
+    #
+    # If immutable_init_state is True, then fix V[init_state] at fixed_init_val.
+    def _step(immutable_init_state=True):
         if verbose or super_verbose:
             print it, V.reshape(mdp.rows, mdp.cols)
 
@@ -196,7 +214,8 @@ def _value_iter(mdp, init_state, update_threshold=1e-8, max_iters=None,
         np.add(V_prime, exp_max, out=V_prime, where=updatable)
         warnings.resetwarnings()
 
-        V_prime[init_state] = fixed_init_val
+        if immutable_init_state:
+            V_prime[init_state] = fixed_init_val
 
         max_update = _calc_max_update(V, V_prime)
         if super_verbose:
@@ -227,5 +246,14 @@ def _value_iter(mdp, init_state, update_threshold=1e-8, max_iters=None,
     while not done and it < max_iters:
         done = _step()
         it += 1
+
+    # Evaluate V[init_val]
+    if not lazy_init_state:
+        dirty.fill(False)
+        dirty[init_state] = True
+        _step(False)
+
+        if verbose or super_verbose:
+            print "*", V.reshape(mdp.rows, mdp.cols)
 
     return V
