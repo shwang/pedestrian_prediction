@@ -23,7 +23,7 @@ class TestGridWorldMDP(TestCase):
         self.state_coor_helper(1, 3, 1, 0, 1)
         self.state_coor_helper(1, 3, 2, 0, 2)
 
-    class DummyMDP(object):
+    class DummyMDP(GridWorldMDP):
         def __init__(self, rows, cols):
             self.rows = rows
             self.cols = cols
