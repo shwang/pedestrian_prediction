@@ -121,12 +121,13 @@ def _value_iter(mdp, init_state, update_threshold=1e-8, max_iters=None,
     dirty[init_state] = True
     updatable = np.empty(mdp.S, dtype=bool)
 
-    max_update = np.inf
     it = 0
     V_prime = np.full(mdp.S, -np.inf)
     V_prime[init_state] = 0
 
-    while it < max_iters:
+    # Execute one iteration. Returns True if converged.
+    # Modifies dirty, updatable, V, and V_prime.
+    def _step():
         if verbose or super_verbose:
             print it, V.reshape(mdp.rows, mdp.cols)
 
@@ -201,7 +202,7 @@ def _value_iter(mdp, init_state, update_threshold=1e-8, max_iters=None,
         if super_verbose:
             print u"max_update", max_update
         if max_update < update_threshold:
-            break
+            return True
 
         # Various warnings for subtracting -inf from -inf and processing the
         # resulting nan.
@@ -218,7 +219,13 @@ def _value_iter(mdp, init_state, update_threshold=1e-8, max_iters=None,
         warnings.filterwarnings(u"ignore", u"invalid value encountered in subtract")
         warnings.filterwarnings(u"ignore", u"divide by zero encountered in greater")
 
-        it += 1
         V[:] = V_prime
+
+        return False
+
+    done = False
+    while not done and it < max_iters:
+        done = _step()
+        it += 1
 
     return V
