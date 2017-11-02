@@ -101,25 +101,6 @@ def test_expected_occupancy_start():
 
     py.plot(data, filename=u'expected_occup.html')
 
-def plot_traj_log_likelihood():
-    g = GridWorldMDP(10, 10, {}, default_reward=-24)
-    start = 0
-    goal = g.coor_to_state(9, 9)
-    traj = simulate(g, 0, goal, beta=6, path_length=5)
-    # plot.visualize_trajectory(g, start, goal, traj, dest_set=[(9,9)], beta=6, heat_maps=(0,))
-
-    x = np.arange(0.5, 11, 0.5)
-    scores = [_compute_score(g, traj, goal, beta) for beta in x]
-    print scores
-
-    import plotly.offline as py
-    import plotly.graph_objs as go
-    trace = go.Scatter(x=x, y=scores, mode=u'markers')
-    py.plot([trace], filename=u'beta.html')
-
-    beta_hat = beta_binary_search(g, traj, goal, guess=1, verbose=True)
-    print u"estimated beta={}".format(beta_hat)
-
 # def value_iter_comparison():
 #     for beta in [2,4,6,8]:
 #
@@ -154,12 +135,11 @@ def smitha_softmax_diverge():
     g = GridWorldMDP(1, 3, {}, default_reward=-0.1)
     V = backwards_value_iter(g, init_state=0, max_iters=15, verbose=True)
 
-andrea_occupancies()
-# smitha_softmax_diverge()
+# andrea_occupancies()
+smitha_softmax_diverge()
 
 # test_simulate_tiny_dest_set()
 # test_simulate_big_dest_set()
 # test_sample_action(2)
 # test_simulate_big_beta()
-# plot_traj_log_likelihood()
 # test_expected_occupancy_start()

@@ -25,15 +25,15 @@ def _display(mdp, traj, init_state, goal_state, overlay=False):
         visited.add(init_state)
 
     for r in xrange(mdp.rows):
-        line = [u'_'] * mdp.cols
+        line = ['_'] * mdp.cols
         for c in xrange(mdp.cols):
             if (r, c) in visited:
-                line[c] = u'#'
+                line[c] = '#'
         if overlay:
             if r == init_state[0]:
-                line[init_state[1]] = u'A' if init_state in visited else u'a'
+                line[init_state[1]] = 'A' if init_state in visited else 'a'
             if r == goal_state[0]:
-                line[goal_state[1]] = u'G' if goal_state in visited else u'g'
+                line[goal_state[1]] = 'G' if goal_state in visited else 'g'
         print line
 
 def simulate(mdp, initial_state, goal_state, beta=1, path_length=None):

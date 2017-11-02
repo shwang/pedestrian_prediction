@@ -9,43 +9,45 @@ from value_iter import backwards_value_iter, forwards_value_iter
 from inference import sample_action, simulate, _display, infer_destination, \
     infer_occupancies, infer_occupancies_from_start, infer_temporal_occupancies, \
     _sum_rewards
-from beta_inference import beta_gradient_ascent, beta_binary_search, _compute_score
+from beta_inference import beta_gradient_ascent, beta_binary_search, _compute_score, \
+        _compute_gradient
 from itertools import izip
 
 Actions = GridWorldMDP.Actions
 
 def visualize_trajectory(g, start, goal, traj, beta=1, dest_set=None,
-        T=0, c_0=-20, sigma_0=5, sigma_1=5, heat_maps=(), zmin=None, zmax=None):
-    print u"Task: Start={}, Goal={}".format(g.state_to_coor(start), g.state_to_coor(goal))
-    print u"Assumed beta={}".format(beta)
-    print u"Possible goals:"
+        T=0, c_0=-20, sigma_0=5, sigma_1=5, heat_maps=(), zmin=None, zmax=None,
+        uid="tmp"):
+    print "Task: Start={}, Goal={}".format(g.state_to_coor(start), g.state_to_coor(goal))
+    print "Assumed beta={}".format(beta)
+    print "Possible goals:"
     if dest_set == None:
-        print u"<all>"
-    else:
-        print dest_set
-    dest_set=set(g.coor_to_state(*d) for d in dest_set)
+        dest_set = {goal}
 
-    print u"Raw trajectory:"
+    dest_set=set(d if type(d) is int else g.coor_to_state(*d) for d in dest_set)
+    print dest_set
+
+    print "Raw trajectory:"
     print [(g.state_to_coor(s), g.Actions(a)) for s, a in traj]
-    print u"With overlay:"
+    print "With overlay:"
     _display(g, traj, start, goal, overlay=True)
-    print u"Trajectory only:"
+    print "Trajectory only:"
     _display(g, traj, start, goal)
 
     P = infer_destination(g, traj, beta=beta, dest_set=dest_set)
-    print u"goal probabilities:"
+    print "goal probabilities:"
     print P.reshape(g.rows, g.cols)
 
     D = infer_occupancies(g, traj, beta=beta, dest_set=dest_set).reshape(g.rows, g.cols)
-    print u"expected occupancies:"
-    print D
+    print "expected occupancies:"
+    print
 
     if T > 0:
         D_t = infer_temporal_occupancies(g, traj, beta=beta, dest_set=dest_set,
                 T=T, c_0=c_0, sigma_0=sigma_0, sigma_1=sigma_1)
         D_t = list(x.reshape(g.rows, g.cols) for x in D_t)
-        print u"calculated T={} expected temporal occupancies.".format(T)
-        print u"Here is the {}th expected temporal occupancy:".format(T//2)
+        print "calculated T={} expected temporal occupancies.".format(T)
+        print "Here is the {}th expected temporal occupancy:".format(T//2)
         print D_t[T//2]
 
     if len(heat_maps) > 0:
@@ -73,19 +75,19 @@ def visualize_trajectory(g, start, goal, traj, beta=1, dest_set=None,
                 states.append(start)
             coors = [g.state_to_coor(s) for s in states]
             x, y = izip(*coors)
-            traj_line = dict(x=x, y=y, line=dict(color=u'white', width=3))
+            traj_line = dict(x=x, y=y, line=dict(color='white', width=3))
             data.append(traj_line)
 
             if dest_set is not None:
                 x, y = izip(*[g.state_to_coor(s) for s in dest_set])
                 dest_markers = go.Scatter(x=x, y=y,
-                    mode=u'markers', marker=dict(size=20, color=u"white", symbol=u"star"))
+                    mode='markers', marker=dict(size=20, color="white", symbol="star"))
                 data.append(dest_markers)
 
             for trace in data:
                 fig.append_trace(trace, row + 1, 1)
 
-        py.plot(fig, filename=u'expected_occup.html')
+        py.plot(fig, filename='output/expected_occup_{}.html'.format(uid))
 
 
 def output_heat_map(g, occupancies, traj, start_state, dest_set, beta_hat=None,
@@ -254,5 +256,59 @@ def plot_all_heat_maps2():
 #             image=u'png', image_filename=u"output/{}.png".format(100+i),
 #             image_width=1400, image_height=750)
 
+def plot_traj_log_likelihood(g, traj, goal, title=None, add_grad=False,
+        beta_min=0.2, beta_max=8.0, beta_step=0.05):
+    # plot.visualize_trajectory(g, start, goal, traj, dest_set=[(9,9)], beta=6, heat_maps=(0,))
+
+    x = np.arange(beta_min, beta_max, beta_step)
+    scores = [_compute_score(g, traj, goal, beta) for beta in x]
+    print scores
+
+    import plotly.offline as py
+    import plotly.graph_objs as go
+    data = []
+    trace1 = go.Scatter(name="log likelihood", x=x, y=scores, mode='markers')
+    data.append(trace1)
+
+    beta_hat = beta_binary_search(g, traj, goal, guess=1, verbose=True)
+    beta_hat_score = _compute_score(g, traj, goal, beta_hat)
+    trace2 = go.Scatter(name="beta_hat log likelihood",
+            x=[beta_hat], y=[beta_hat_score], mode='markers')
+    data.append(trace2)
+
+    if add_grad:
+        grads = [_compute_gradient(g, traj, goal, beta) for beta in x]
+        trace3 = go.Scatter(name="gradient of log likelihood", x=x, y=grads, mode='markers')
+        data.append(trace3)
+
+    layout = go.Layout(title=title, xaxis=dict(title="beta"))
+    fig = go.Figure(data=data, layout=dict(title=title))
+
+    py.plot(fig, filename='output/beta.html')
+
+    print "estimated beta={}".format(beta_hat)
+
+def log_likelihood_wrt_beta():
+    g = GridWorldMDP(10, 10, {}, default_reward=-24)
+    start = 0
+    goal = g.coor_to_state(9, 9)
+    traj = simulate(g, 0, goal, beta=6, path_length=5)
+    visualize_trajectory(g, 0, goal, traj, heat_maps=(0,))
+    plot_traj_log_likelihood(g, traj, goal)
+
+def shortest_paths_beta_hat():
+    N = 3
+    g = GridWorldMDP(N, N, {}, default_reward=-24)
+    start = 0
+    goal = N*N-1
+
+    for i in range(1, N*N):
+        traj = simulate(g, 0, i, beta=0.1)[:-1]
+        # visualize_trajectory(g, 0, goal, traj, heat_maps=(0,), uid=i)
+        plot_traj_log_likelihood(g, traj, goal, title=str(g.state_to_coor(i)),
+                beta_max=11, beta_step=0.2, add_grad=True)
+
 if __name__ == '__main__':
-    plot_all_heat_maps2()
+    # log_likelihood_wrt_beta()
+    shortest_paths_beta_hat()
+    # plot_all_heat_maps2()
