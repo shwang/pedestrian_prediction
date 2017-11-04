@@ -78,7 +78,7 @@ def simulate(mdp, initial_state, goal_state, beta=1, path_length=None):
             s = mdp.transition(s, a)
     return traj
 
-def sample_action(mdp, state, goal, beta=1, cached_values=None):
+def sample_action(mdp, state, goal, beta=1, nachum=False, cached_values=None):
     u"""
     Choose an action probabilistically, like a softmax agent would.
     Params:
@@ -112,7 +112,10 @@ def sample_action(mdp, state, goal, beta=1, cached_values=None):
     P = np.zeros(mdp.A)
     for a in xrange(mdp.A):
         s_prime = mdp.transition(state, a)
-        P[a] = mdp.rewards[state, a]/beta + V[s_prime] - V[state]
+        if not nachum:
+            P[a] = mdp.rewards[state, a]/beta + V[s_prime] - V[state]
+        else:
+            P[a] = (mdp.rewards[state, a] + V[s_prime] - V[state])/beta
 
     if beta == 0:
         # Use hardmax choice; would otherwise result in P = inf/inf = NaN.
@@ -127,7 +130,7 @@ def sample_action(mdp, state, goal, beta=1, cached_values=None):
     return np.random.choice(range(mdp.A), p=P)
 
 def infer_destination(mdp, traj, beta=1, prior=None, dest_set=None,
-        V_a_cached=None, V_b_cached=None, vi_precision=1e-5,
+        V_a_cached=None, V_b_cached=None, vi_precision=1e-5, nachum=False,
         backwards_value_iter_fn=backwards_value_iter, verbose=False):
     u"""
     Calculate the probability of each destination given the trajectory so far.
@@ -219,14 +222,17 @@ def infer_destination(mdp, traj, beta=1, prior=None, dest_set=None,
     # P_dest = traj_reward + V_b - V_a
     P_dest = np.zeros(mdp.S)
     for C in xrange(mdp.S):
-        P_dest[C] = np.exp(traj_reward + V_b[C] - V_a[C])
+        if nachum:
+            P_dest[C] = np.exp((traj_reward + V_b[C] - V_a[C])/beta)
+        else:
+            P_dest[C] = np.exp(traj_reward + V_b[C] - V_a[C])
         if prior is not None:
             P_dest[C] *= prior[C]
     return _normalize(P_dest)
 
 def infer_occupancies(mdp, traj, beta=1, prior=None, dest_set=None, vi_precision=1e-7,
-        backwards_value_iter_fn=backwards_value_iter, verbose=False):
-    u"""
+        nachum=False, backwards_value_iter_fn=backwards_value_iter, verbose=False):
+    """
     Calculate the expected number of times each state will be occupied given the
     trajectory so far.
 
@@ -239,6 +245,8 @@ def infer_occupancies(mdp, traj, beta=1, prior=None, dest_set=None, vi_precision
             Beta must be nonnegative. If beta=0, then the softmax agent
             always acts optimally. If beta=float('inf'), then the softmax agent
             acts completely randomly.
+        nachum [bool]: (optional) (experimental) If true, then use Nachum-style Bellman
+            updates. Otherwise, use shwang-style Bellman updates.
         prior [list-like]: (optional) A normalized vector with length mdp.S, where
             the ith entry is the prior probability that the agent's destination is
             state i. By default, the prior probability is uniform over all states.
@@ -287,7 +295,11 @@ def infer_occupancies(mdp, traj, beta=1, prior=None, dest_set=None, vi_precision
         if prior[C] == 0:
             continue
 
-        goal_val = -V_b[C] + np.log(P_dest[C])
+        if not nachum:
+            goal_val = -V_b[C] + np.log(P_dest[C])
+        else:
+            goal_val = -V_b[C]/beta + np.log(P_dest[C])
+
 
         D_dest += forwards_value_iter(mdp, C, beta=beta,
                     fixed_init_val=goal_val, verbose=verbose)
@@ -295,7 +307,14 @@ def infer_occupancies(mdp, traj, beta=1, prior=None, dest_set=None, vi_precision
     # The paper says to multiply by exp(V_a), but exp(V_b) gets better results
     # and seems more intuitive.
     D_dest += V_b
-    return np.exp(D_dest)
+    if not nachum:
+        return np.exp(D_dest)
+    else:
+        res = np.exp(D_dest)
+        if dest_set is not None and len(dest_set) == 1:
+            # True when only one destination.
+            assert np.max(res) == res[list(dest_set)[0]]
+        return res / np.max(res)
 
 # XXX: Cached occupancies?
 

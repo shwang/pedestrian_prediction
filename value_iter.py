@@ -81,7 +81,7 @@ def backwards_value_iter(*args, **kwargs):
         kwargs['lazy_init_state'] = False
     return _value_iter(*args, **kwargs)
 
-def _value_iter(mdp, init_state, update_threshold=1e-8, max_iters=None,
+def _value_iter(mdp, init_state, update_threshold=1e-8, max_iters=None, nachum=False,
         fixed_init_val=0, beta=1, forwards=False, lazy_init_state=False, absorb=False,
         verbose=False, super_verbose=False):
     u"""
@@ -99,6 +99,8 @@ def _value_iter(mdp, init_state, update_threshold=1e-8, max_iters=None,
         max_iters [int]: (optional) An upper bound on the number of value iterations to
             perform. If this upper bound is reached, then iteration will cease regardless
             of whether `update_threshold`'s condition is met.
+        nachum [bool]: (optional) (experimental) If true, then use Nachum-style Bellman
+            updates. Otherwise, use shwang-style Bellman updates.
         fixed_init_val [float]: (optional) Fix the initial state's value at this value.
         beta [float]: (optional) The softmax agent's irrationality constant.
             Beta must be nonnegative. If beta=0, then the softmax agent
@@ -168,7 +170,7 @@ def _value_iter(mdp, init_state, update_threshold=1e-8, max_iters=None,
             print it, updatable.reshape(mdp.rows, mdp.cols)
 
         temp = np.empty(mdp.S)
-        exp_max = np.zeros(mdp.S)
+        exp_max = np.zeros(mdp.S)  # log-sum-exp trick to prevent exp overflow.
         if forwards:
             for s in xrange(mdp.S):
                 if not updatable[s]:
@@ -179,7 +181,10 @@ def _value_iter(mdp, init_state, update_threshold=1e-8, max_iters=None,
                 exp_max[s] = -np.inf
 
                 for i, (a, s_prime) in enumerate(mdp.neighbors[s]):
-                    temp[i] = mdp.rewards[s, a]/beta + V[s_prime]
+                    if not nachum:
+                        temp[i] = mdp.rewards[s, a]/beta + V[s_prime]
+                    else:
+                        temp[i] = mdp.rewards[s, a]/beta + V[s_prime]/beta
                     if temp[i] == -np.inf:
                         continue
                     if temp[i] > exp_max[s]:
@@ -197,7 +202,11 @@ def _value_iter(mdp, init_state, update_threshold=1e-8, max_iters=None,
                 exp_max[s_prime] = -np.inf
 
                 for i, (a, s) in enumerate(mdp.reverse_neighbors[s_prime]):
-                    temp[i] = mdp.rewards[s, a]/beta + V[s]
+                    if not nachum:
+                        temp[i] = mdp.rewards[s, a]/beta + V[s]
+                    else:
+                        temp[i] = mdp.rewards[s, a]/beta + V[s]/beta
+
                     if temp[i] == -np.inf:
                         continue
                     if temp[i] > exp_max[s_prime]:
@@ -213,6 +222,10 @@ def _value_iter(mdp, init_state, update_threshold=1e-8, max_iters=None,
         np.log(V_prime, out=V_prime, where=updatable)
         np.add(V_prime, exp_max, out=V_prime, where=updatable)
         warnings.resetwarnings()
+
+        if nachum:
+            # XXX: Hmmmm... I wonder how beta should interact with V_prime[init_state]
+            np.multiply(V_prime, beta, out=V_prime, where=updatable)
 
         if immutable_init_state:
             V_prime[init_state] = fixed_init_val
