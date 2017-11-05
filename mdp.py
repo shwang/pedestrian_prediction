@@ -109,22 +109,22 @@ class GridWorldMDP(MDP):
         assert a >= 0 and a < len(self.Actions), a
 
         r_prime, c_prime = r, c
-        if a == self.Actions.UP:
+        if a == self.Actions.LEFT:
             r_prime = r - 1
-        elif a == self.Actions.DOWN:
-            r_prime = r + 1
-        elif a == self.Actions.LEFT:
-            c_prime = c - 1
         elif a == self.Actions.RIGHT:
+            r_prime = r + 1
+        elif a == self.Actions.DOWN:
+            c_prime = c - 1
+        elif a == self.Actions.UP:
             c_prime = c + 1
         elif a == self.Actions.UP_LEFT:
-            r_prime, c_prime = r - 1, c - 1
-        elif a == self.Actions.UP_RIGHT:
             r_prime, c_prime = r - 1, c + 1
-        elif a == self.Actions.DOWN_LEFT:
-            r_prime, c_prime = r + 1, c - 1
-        elif a == self.Actions.DOWN_RIGHT:
+        elif a == self.Actions.UP_RIGHT:
             r_prime, c_prime = r + 1, c + 1
+        elif a == self.Actions.DOWN_LEFT:
+            r_prime, c_prime = r - 1, c - 1
+        elif a == self.Actions.DOWN_RIGHT:
+            r_prime, c_prime = r + 1, c - 1
         elif a == self.Actions.ABSORB:
             pass
         else:

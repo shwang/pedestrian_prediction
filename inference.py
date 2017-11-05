@@ -24,17 +24,21 @@ def _display(mdp, traj, init_state, goal_state, overlay=False):
     else:
         visited.add(init_state)
 
-    for r in xrange(mdp.rows):
-        line = ['_'] * mdp.cols
-        for c in xrange(mdp.cols):
+    lines = []
+    for c in xrange(mdp.cols):
+        line = ['_'] * mdp.rows
+        for r in xrange(mdp.rows):
             if (r, c) in visited:
-                line[c] = '#'
+                line[r] = '#'
         if overlay:
-            if r == init_state[0]:
-                line[init_state[1]] = 'A' if init_state in visited else 'a'
-            if r == goal_state[0]:
-                line[goal_state[1]] = 'G' if goal_state in visited else 'g'
-        print line
+            if c == init_state[1]:
+                line[init_state[0]] = 'A' if init_state in visited else 'a'
+            if c == goal_state[1]:
+                line[goal_state[0]] = 'G' if goal_state in visited else 'g'
+        lines.append(line)
+
+    for l in reversed(lines):
+        print l
 
 def simulate(mdp, initial_state, goal_state, beta=1, path_length=None):
     u"""
