@@ -20,9 +20,13 @@ def _compute_score(g, traj, goal, beta):
 def _compute_gradient(g, traj, goal, beta):
     assert len(traj) > 0, traj
     start = traj[0][0]
+    curr = g.transition(*traj[-1])
     R_traj = _sum_rewards(g, traj)
-    ex_1 = np.sum(np.multiply(infer_occupancies(g, traj, beta=beta, dest_set=set([goal])),
-            g.state_rewards))
+    if curr == goal:
+        ex_1 = 0
+    else:
+        ex_1 = np.sum(np.multiply(infer_occupancies(g, traj, beta=beta, dest_set=set([goal])),
+                g.state_rewards))
     ex_2 = np.sum(np.multiply(
         infer_occupancies_from_start(g, start, beta=beta, dest_set=set([goal])),
         g.state_rewards))
