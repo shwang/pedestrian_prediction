@@ -44,6 +44,45 @@ def _make_harmonic(k, s=2, base=0.2):
         return max(k * 1/(s*i+1), base)
     return harmonic
 
+def beta_simple_search(g, traj, goal, guess=None, delta=0.2, beta_threshold=5e-3,
+        verbose=False, min_beta=0.7, max_beta=11, min_iters=5, max_iters=30):
+
+    if len(traj) == 0:
+        return guess
+    lo, hi = min_beta, max_beta
+    mid = guess or (hi + lo)/2
+
+    for i in xrange(max_iters):
+        assert lo <= mid <= hi
+        diff = min(hi - mid, mid - lo)
+        mid_minus = mid - diff*delta
+        mid_plus = mid + diff*delta
+
+        s_minus = _compute_score(g, traj, goal, mid_minus)
+        s_plus = _compute_score(g, traj, goal, mid_plus)
+
+        if verbose:
+            s_mid = _compute_score(g, traj, goal, mid)
+            print "i={}\t mid={}\tscore={}\tgrad={}".format(
+                    i, mid, s_mid, (s_plus-s_minus)*2/delta)
+
+        if i >= min_iters and hi - lo < beta_threshold:
+            break
+
+        if s_plus - s_minus > 0:
+            lo = mid
+        else:
+            hi = mid
+        if i >= min_iters and hi - lo < beta_threshold:
+            break
+
+        mid = (lo + hi)/2
+
+    if verbose:
+        print "final answer: beta=", mid
+    return mid
+
+
 def beta_binary_search(g, traj, goal, guess=None, grad_threshold=1e-9, beta_threshold=5e-5,
         min_iters=10, max_iters=30, min_beta=0.7, max_beta=11, verbose=False):
 
