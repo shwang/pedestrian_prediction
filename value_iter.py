@@ -83,7 +83,7 @@ def backwards_value_iter(*args, **kwargs):
 
 def _value_iter(mdp, init_state, update_threshold=1e-8, max_iters=None, nachum=False,
         fixed_init_val=0, beta=1, forwards=False, lazy_init_state=False, absorb=False,
-        verbose=False, super_verbose=False):
+        verbose=False, super_verbose=False, init_vals=None, gamma=1):
     u"""
     Approximate the softmax value of reaching various destination states, starting
     from a given initial state.
@@ -126,18 +126,24 @@ def _value_iter(mdp, init_state, update_threshold=1e-8, max_iters=None, nachum=F
     assert beta >= 0, beta
     assert init_state >= 0 and init_state < mdp.S, init_state
 
-    V = np.full(mdp.S, float(u'-inf'))
-    V[init_state] = 0
+    mdp = mdp.copy()
+
+    if init_vals is None:
+        V = np.full(mdp.S, float(u'-inf'))
+        V[init_state] = 0
+        dirty = np.full(mdp.S, False)
+        dirty[init_state] = True
+        updatable = np.empty(mdp.S, dtype=bool)
+    else:
+        assert init_vals.shape == (mdp.S,)
+        V = init_vals
+        dirty = np.full(mdp.S, True)
+        updatable = np.empty(mdp.S, dtype=bool)
     if max_iters == None:
         max_iters = float(u'inf')
 
-    mdp = mdp.copy()
-
     # Set up the dirty bitfield. When caching is True, this is used to determine
     # which states to update.
-    dirty = np.full(mdp.S, False)
-    dirty[init_state] = True
-    updatable = np.empty(mdp.S, dtype=bool)
 
     it = 0
     V_prime = np.full(mdp.S, -np.inf)
@@ -182,9 +188,9 @@ def _value_iter(mdp, init_state, update_threshold=1e-8, max_iters=None, nachum=F
 
                 for i, (a, s_prime) in enumerate(mdp.neighbors[s]):
                     if not nachum:
-                        temp[i] = mdp.rewards[s, a]/beta + V[s_prime]
+                        temp[i] = mdp.rewards[s, a]/beta + gamma*V[s_prime]
                     else:
-                        temp[i] = mdp.rewards[s, a]/beta + V[s_prime]/beta
+                        temp[i] = mdp.rewards[s, a]/beta + gamma*V[s_prime]/beta
                     if temp[i] == -np.inf:
                         continue
                     if temp[i] > exp_max[s]:
@@ -203,9 +209,9 @@ def _value_iter(mdp, init_state, update_threshold=1e-8, max_iters=None, nachum=F
 
                 for i, (a, s) in enumerate(mdp.reverse_neighbors[s_prime]):
                     if not nachum:
-                        temp[i] = mdp.rewards[s, a]/beta + V[s]
+                        temp[i] = mdp.rewards[s, a]/beta + gamma*V[s]
                     else:
-                        temp[i] = mdp.rewards[s, a]/beta + V[s]/beta
+                        temp[i] = mdp.rewards[s, a]/beta + gamma*V[s]/beta
 
                     if temp[i] == -np.inf:
                         continue
