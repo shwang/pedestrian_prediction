@@ -7,17 +7,19 @@ from inference import sample_action, simulate, _display, infer_destination, \
 
 import numpy as np
 
-def _compute_score(g, traj, goal, beta):
+def _compute_score(g, traj, goal, beta, debug=False):
     assert len(traj) > 0, traj
     V = forwards_value_iter(g, goal, beta=beta)
     R_traj = _sum_rewards(g, traj)
     start = traj[0][0]
     S_b = g.transition(*traj[-1])
 
+    if debug:
+        print V[S_b], V[start], V[S_b] - V[start]
     log_score = R_traj/beta + V[S_b] - V[start]
     return log_score
 
-def _compute_gradient(g, traj, goal, beta):
+def _compute_gradient(g, traj, goal, beta, debug=False):
     assert len(traj) > 0, traj
     start = traj[0][0]
     curr = g.transition(*traj[-1])
@@ -25,14 +27,17 @@ def _compute_gradient(g, traj, goal, beta):
     if curr == goal:
         ex_1 = 0
     else:
-        ex_1 = np.sum(np.multiply(infer_occupancies(g, traj, beta=beta, dest_set=set([goal])),
+        ex_1 = np.sum(np.multiply(infer_occupancies(g, traj, beta=beta, dest_set={goal}),
                 g.state_rewards))
     ex_2 = np.sum(np.multiply(
-        infer_occupancies_from_start(g, start, beta=beta, dest_set=set([goal])),
+        infer_occupancies_from_start(g, start, beta=beta, dest_set={goal}),
         g.state_rewards))
 
     grad_log_score = (-1/beta**2) * (R_traj + ex_1 - ex_2)
-    return grad_log_score
+    if debug:
+        return grad_log_score, ex_1, ex_2
+    else:
+        return grad_log_score
 
 def _make_harmonic(k, s=2, base=0.2):
     def harmonic(i):
