@@ -107,14 +107,13 @@ def test_expected_occupancy_start():
 #     value_k
 
 def andrea_occupancies():
-    g = GridWorldMDP(10, 10, {}, default_reward=-9)
+    g = GridWorldMDP(6, 6, {}, default_reward=-9)
     start = 0
-    goal = g.coor_to_state(5, 4)
-    traj = simulate(g, 0, goal)
-    traj = traj[:-3]
-    dest_set = set([(5,7), (0,4), (9, 9)])
-    dest_set=set(g.coor_to_state(*d) for d in dest_set)
-    beta=1
+    goal = g.coor_to_state(5, 5)
+    beta = 1
+    traj = simulate(g, 0, goal, beta=beta)
+    traj = traj[:1]
+    dest_set = {goal}
 
     print u"Raw trajectory:"
     print [(g.state_to_coor(s), g.Actions(a)) for s, a in traj]
@@ -131,9 +130,15 @@ def andrea_occupancies():
     print u"expected occupancies:"
     print D
 
+    plot.output_heat_map(g, D, traj, start, {goal}, plot=True)
+
 def smitha_softmax_diverge():
-    g = GridWorldMDP(1, 3, {}, default_reward=-0.1)
-    V = backwards_value_iter(g, init_state=0, max_iters=15, verbose=True)
+    g = GridWorldMDP(1, 4, {}, default_reward=-3)
+    init_vals = np.array([0, -3, -6, -9], dtype=float)
+    init_vals = np.array([0, 0, 0, 0], dtype=float)
+    V = backwards_value_iter(g, init_state=0, max_iters=10, verbose=True,
+            beta=10, nachum=True, init_vals=init_vals)
+
 
 # andrea_occupancies()
 smitha_softmax_diverge()

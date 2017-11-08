@@ -9,8 +9,8 @@ from value_iter import backwards_value_iter, forwards_value_iter
 from inference import sample_action, simulate, _display, infer_destination, \
     infer_occupancies, infer_occupancies_from_start, infer_temporal_occupancies, \
     _sum_rewards
-from beta_inference import beta_gradient_ascent, beta_binary_search, _compute_score, \
-        _compute_gradient
+from beta_inference import *
+from beta_inference import _compute_score, _compute_gradient
 from itertools import izip
 
 Actions = GridWorldMDP.Actions
@@ -91,7 +91,7 @@ def visualize_trajectory(g, start, goal, traj, beta=1, dest_set=None,
 
 
 def output_heat_map(g, occupancies, traj, start_state, dest_set, beta_hat=None,
-        zmin=None, zmax=None):
+        zmin=None, zmax=0, auto_logarithm=True, plot=False):
     import plotly.offline as py
     import plotly.graph_objs as go
     from plotly import offline
@@ -99,7 +99,10 @@ def output_heat_map(g, occupancies, traj, start_state, dest_set, beta_hat=None,
 
     data = []
 
-    o = np.log(occupancies.T)
+    o = occupancies.T
+    if auto_logarithm:
+        o = np.log(o)
+
     for i in xrange(o.shape[0]):
         for j in xrange(o.shape[1]):
             val = o[i, j]
@@ -117,7 +120,7 @@ def output_heat_map(g, occupancies, traj, start_state, dest_set, beta_hat=None,
     if len(traj) > 0:
         states.append(g.transition(*traj[-1]))
     else:
-        states.append(start)
+        states.append(start_state)
     coors = [g.state_to_coor(s) for s in states]
     x, y = izip(*coors)
     traj_line = dict(x=x, y=y, line=dict(color=u'white', width=3))
@@ -128,6 +131,8 @@ def output_heat_map(g, occupancies, traj, start_state, dest_set, beta_hat=None,
         mode=u'markers', marker=dict(size=20, color=u"white", symbol=u"star"))
     data.append(dest_markers)
 
+    if plot:
+        py.plot(data, filename='output/output_heat_map.html')
     return data
 
 def plot_all_heat_maps():
@@ -197,16 +202,17 @@ def plot_all_heat_maps():
             fig.append_trace(t, 1, 3)
         py.plot(fig, filename=u"output/{}.html".format(100+i))
 
-def plot_all_heat_maps2():
+def plot_all_heat_maps3():
     import plotly.offline as py
     import plotly.graph_objs as go
     from plotly import offline
     from plotly import tools as tools
 
-    N = 4
+    N = 6
     g = GridWorldMDP(N, N, {}, default_reward=-10)
     start = 0
-    goal = g.S - 1
+    # goal = g.S - 1
+    goal = g.coor_to_state(N-1, 0)
     # model_goal = g.coor_to_state(N-1,N//2)
     # goal = g.coor_to_state(N-1, N//2)
     model_goal = goal
@@ -215,13 +221,11 @@ def plot_all_heat_maps2():
 
     beta_fixed = 1
     beta_hat = 1
-    min_beta = 0.02
+    min_beta = 0.2
     max_beta = 5
     zmin = -20
     def format_occ(occupancies):
         return occupancies.reshape(g.rows, g.cols)
-
-    print trajectory
 
     for i in xrange(len(trajectory) - 1):
         traj = trajectory[:i+1]
@@ -252,29 +256,31 @@ def plot_all_heat_maps2():
             fig.append_trace(t, 1, 1)
         for t in data2:
             fig.append_trace(t, 1, 2)
-        py.plot(fig, filename=u"output/{}.html".format(100+i)) #,
-#             image=u'png', image_filename=u"output/{}.png".format(100+i),
-#             image_width=1400, image_height=750)
+        py.plot(fig, filename=u"output/{}.html".format(100+i))
+        # py.plot(fig, filename=u"output/{}.html".format(100+i),
+        #      image=u'png', image_filename=u"output/{}.png".format(100+i),
+        #      image_width=1400, image_height=750)
 
-def plot_traj_log_likelihood(g, traj, goal, title=None, add_grad=False,
-        beta_min=0.2, beta_max=8.0, beta_step=0.05):
-    # plot.visualize_trajectory(g, start, goal, traj, dest_set=[(9,9)], beta=6, heat_maps=(0,))
+def plot_traj_log_likelihood(g, traj, goal, title=None, add_grad=True, add_beta_hat=True,
+        beta_min=0.2, beta_max=8.0, beta_step=0.05, plot=True, verbose=True):
 
     x = np.arange(beta_min, beta_max, beta_step)
     scores = [_compute_score(g, traj, goal, beta) for beta in x]
-    print scores
 
     import plotly.offline as py
     import plotly.graph_objs as go
+    from plotly import tools
     data = []
     trace1 = go.Scatter(name="log likelihood", x=x, y=scores, mode='markers')
     data.append(trace1)
 
-    beta_hat = beta_binary_search(g, traj, goal, guess=1, verbose=True)
-    beta_hat_score = _compute_score(g, traj, goal, beta_hat)
-    trace2 = go.Scatter(name="beta_hat log likelihood",
-            x=[beta_hat], y=[beta_hat_score], mode='markers')
-    data.append(trace2)
+    if add_beta_hat:
+        # beta_hat = beta_binary_search(g, traj, goal, guess=1, verbose=True)
+        beta_hat = beta_simple_search(g, traj, goal, guess=1, verbose=True)
+        beta_hat_score = _compute_score(g, traj, goal, beta_hat)
+        trace2 = go.Scatter(name="beta_hat log likelihood",
+                x=[beta_hat], y=[beta_hat_score], mode='markers')
+        data.append(trace2)
 
     if add_grad:
         grads = [_compute_gradient(g, traj, goal, beta) for beta in x]
@@ -282,33 +288,144 @@ def plot_traj_log_likelihood(g, traj, goal, title=None, add_grad=False,
         data.append(trace3)
 
     layout = go.Layout(title=title, xaxis=dict(title="beta"))
-    fig = go.Figure(data=data, layout=dict(title=title))
 
-    py.plot(fig, filename='output/beta.html')
+    if plot:
+        fig = tools.make_subplots(rows=2, cols=1, shared_xaxes=True,
+                subplot_titles=(
+                    "log likelihood of trajectory",
+                    "gradient of log likelihood"
+                    ))
+        fig.append_trace(trace1, 1, 1)
+        if add_beta_hat:
+            fig.append_trace(trace2, 1, 1)
+        if add_grad:
+            fig.append_trace(trace3, 2, 1)
+        fig['layout'].update(title=title, xaxis=dict(title="beta"))
+        py.plot(fig, filename='output/beta.html')
 
-    print "estimated beta={}".format(beta_hat)
+
+    if verbose and add_beta_hat:
+        print "estimated beta={}".format(beta_hat)
+
+    return data, layout
 
 def log_likelihood_wrt_beta():
-    g = GridWorldMDP(10, 10, {}, default_reward=-24)
-    start = 0
-    goal = g.coor_to_state(9, 9)
-    traj = simulate(g, 0, goal, beta=6, path_length=5)
-    visualize_trajectory(g, 0, goal, traj, heat_maps=(0,))
-    plot_traj_log_likelihood(g, traj, goal)
-
-def shortest_paths_beta_hat():
-    N = 3
+    N = 5
     g = GridWorldMDP(N, N, {}, default_reward=-24)
     start = 0
     goal = N*N-1
+    traj = simulate(g, 0, goal, beta=0.3, path_length=5)[:-1]
+    visualize_trajectory(g, 0, goal, traj, heat_maps=(0,))
+    plot_traj_log_likelihood(g, traj, goal, add_grad=False)
 
-    for i in range(1, N*N):
-        traj = simulate(g, 0, i, beta=0.1)[:-1]
-        # visualize_trajectory(g, 0, goal, traj, heat_maps=(0,), uid=i)
-        plot_traj_log_likelihood(g, traj, goal, title=str(g.state_to_coor(i)),
-                beta_max=11, beta_step=0.2, add_grad=True)
+def shortest_paths_beta_hat():
+    """
+    Output a heat map showing the beta_hat that would result from taking the
+    shortest path to a given state.
+    """
+    import plotly.offline as py
+    import plotly.graph_objs as go
+    from plotly import offline
+    from plotly import tools as tools
+    N = 10
+    g = GridWorldMDP(N, N, {}, default_reward=-24)
+    start = 0
+    goal = g.coor_to_state(N//2, N-1)
+    # goal = N*N-1
+    min_beta = 0.2
+    max_beta = 10
+
+    beta_hats = np.zeros(N*N)
+    beta_hats[0] = np.nan
+    for s in range(1, N*N):
+        traj = simulate(g, 0, s, beta=0.1)[:-1]
+        beta_hats[s] = beta_simple_search(g, traj, goal, guess=1,
+                verbose=False, min_beta=min_beta, max_beta=max_beta,
+                min_iters=6, max_iters=12)
+
+    beta_hats = beta_hats.reshape([g.rows, g.cols])
+    data = output_heat_map(g, beta_hats, traj=[], start_state=0, dest_set={goal},
+            beta_hat=0, zmin=min_beta, zmax=max_beta, auto_logarithm=False)
+    fig = go.Figure(data=data,
+            layout=dict(title="beta estimate for shortest path to each square"))
+    # fig['name'] = 'beta_hat'
+    py.plot(fig)
+    import pdb; pdb.set_trace()
+
+def plot_all_heat_maps2():
+    import plotly.offline as py
+    import plotly.graph_objs as go
+    from plotly import offline
+    from plotly import tools as tools
+
+    N = 15
+    g = GridWorldMDP(N, N, {}, default_reward=-12)
+    start = 0
+    # goal = g.S - 1
+    # goal = g.coor_to_state(N-1, 0)
+    # model_goal = g.coor_to_state(N-1,N//2)
+    goal = g.coor_to_state(N-1, N//2)
+    model_goal = goal
+    true_beta = 0.2
+    trajectory = simulate(g, start, goal, beta=true_beta)
+    # trajectory = [[0, 1], [4, 1], [8, 1], [12, 8]]
+
+    beta_fixed = 1
+    beta_hat = 1
+    min_beta = 0.2
+    max_beta = 5
+    zmin = -20
+    def format_occ(occupancies):
+        return occupancies.reshape(g.rows, g.cols)
+
+    for i in xrange(len(trajectory)):
+        if i == 0:
+            traj = [(start, Actions.ABSORB)]
+        else:
+            traj = trajectory[:i]
+        #beta_hat = beta_binary_search(g, traj, model_goal, guess=beta_hat, verbose=True,
+        #        min_beta=min_beta, max_beta=max_beta)
+        if i == 0:
+            beta_hat = 1
+        else:
+            beta_hat = beta_simple_search(g, traj, model_goal, guess=beta_hat,
+                    verbose=i==13, min_beta=min_beta, max_beta=max_beta)
+            print "{}: beta_hat={}".format(i+1, beta_hat)
+
+        occupancies = format_occ(infer_occupancies(g, traj, beta=beta_hat,
+                dest_set=set([model_goal])))
+        data1 = output_heat_map(g, occupancies, traj, start, dest_set=set([model_goal]),
+                zmin=zmin, zmax=0)
+
+        fixed_occupancies = format_occ(infer_occupancies(g, traj, beta=beta_fixed,
+                dest_set=set([model_goal])))
+        data2 = output_heat_map(g, fixed_occupancies, traj, start, dest_set=set([model_goal]),
+                zmin=zmin, zmax=0)
+
+        first_title = "beta_hat={} (MLE)".format(beta_hat)
+        if abs(beta_hat - max_beta) < 1e-4:
+            first_title += " (beta at max!)"
+
+        fig = tools.make_subplots(rows=1, cols=2,
+                subplot_titles=(
+                    first_title,
+                    "beta={} (Ziebart beta)".format(beta_fixed)))
+        fig['layout'].update(title="Correct Goal<br>t={}".format(i))
+
+        for t in data1:
+            fig.append_trace(t, 1, 1)
+        for t in data2:
+            fig.append_trace(t, 1, 2)
+        # py.plot(fig, filename=u"output/{}.html".format(100+i))
+        py.plot(fig, filename=u"output/{}.html".format(100+i),
+            image=u'png', image_filename=u"output/{}.png".format(100+i),
+            image_width=1400, image_height=750)
+
+
 
 if __name__ == '__main__':
     # log_likelihood_wrt_beta()
     shortest_paths_beta_hat()
+    # plot_all_heat_maps3()
+    # study_traj()
     # plot_all_heat_maps2()
