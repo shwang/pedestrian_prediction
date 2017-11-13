@@ -15,6 +15,14 @@ from itertools import izip
 
 Actions = GridWorldMDP.Actions
 
+def build_traj_from_actions(g, init_state, actions):
+    s = init_state
+    traj = []
+    for a in actions:
+        traj.append((s, a))
+        s = g.transition(s, a)
+    return traj
+
 def visualize_trajectory(g, start, goal, traj, beta=1, dest_set=None,
         T=0, c_0=-20, sigma_0=5, sigma_1=5, heat_maps=(), zmin=None, zmax=None,
         uid="tmp"):
@@ -358,23 +366,95 @@ def plot_all_heat_maps2():
     from plotly import offline
     from plotly import tools as tools
 
-    N = 15
-    g = GridWorldMDP(N, N, {}, default_reward=-12)
+    N = 40
+    R = -8
+    g = GridWorldMDP(N, N, {}, default_reward=R)
     start = 0
-    # goal = g.S - 1
+    # start = g.coor_to_state(N//2, 0)
+    goal = g.S - 1
     # goal = g.coor_to_state(N-1, 0)
     # model_goal = g.coor_to_state(N-1,N//2)
-    goal = g.coor_to_state(N-1, N//2)
+    # goal = model_goal = g.coor_to_state(N//2, N-1)
+    # goal = g.coor_to_state(N-1, N//2)
     model_goal = goal
-    true_beta = 0.2
+    true_beta = 0.01
     trajectory = simulate(g, start, goal, beta=true_beta)
+    # trajectory = build_traj_from_actions(g, start, [Actions.UP] * N)
     # trajectory = [[0, 1], [4, 1], [8, 1], [12, 8]]
 
     beta_fixed = 1
     beta_hat = 1
-    min_beta = 0.2
-    max_beta = 5
-    zmin = -20
+    min_beta = 0.02
+    max_beta = 1.19
+    auto_log=True
+    zmin = -3.5
+    zmax = 0
+    # auto_log=False
+    # zmin = 0
+    # zmax = 0.7
+    def format_occ(occupancies):
+        return occupancies.reshape(g.rows, g.cols)
+
+    for i in xrange(len(trajectory)):
+        if i == 0:
+            traj = [(start, Actions.ABSORB)]
+        else:
+            traj = trajectory[:i]
+
+        fixed_occupancies = format_occ(infer_occupancies(g, traj, beta=beta_fixed,
+                dest_set=set([model_goal])))
+        data1 = output_heat_map(g, fixed_occupancies, traj, start,
+                dest_set=set([model_goal]),
+                auto_logarithm=auto_log,
+                zmin=zmin, zmax=zmax)
+
+        fig = tools.make_subplots(rows=1, cols=1,
+                subplot_titles=(
+                    "beta={} (Ziebart beta)".format(beta_fixed),))
+        fig['layout'].update(
+                title=("Correct Goal, movement reward={R}, " +
+                "{min_beta}&lt;beta&lt;{max_beta}<br>t={t}").format(
+                    t=i, R=R, min_beta=min_beta, max_beta=max_beta))
+
+        for t in data1:
+            fig.append_trace(t, 1, 1)
+        # py.plot(fig, filename=u"output/{}.html".format(100+i))
+        py.plot(fig, filename=u"output/{}.html".format(100+i),
+            image=u'png', image_filename=u"output/{}.png".format(100+i),
+            image_width=1400, image_height=750)
+
+def plot_all_heat_maps3():
+    import plotly.offline as py
+    import plotly.graph_objs as go
+    from plotly import offline
+    from plotly import tools as tools
+
+    N = 20
+    R = -2.5
+    g = GridWorldMDP(N, N, {}, default_reward=R)
+    start = 0
+    # start = g.coor_to_state(N//2, 0)
+    # goal = g.S - 1
+    # goal = g.coor_to_state(N-1, 0)
+    # model_goal = g.coor_to_state(N-1,N//2)
+    goal = model_goal = g.coor_to_state(N//2, N-1)
+    # goal = g.coor_to_state(N-1, N//2)
+    model_goal = goal
+    true_beta = 1.12
+    trajectory = simulate(g, start, goal, beta=true_beta)
+    # trajectory = build_traj_from_actions(g, start, [Actions.UP] * N)
+    # trajectory = [[0, 1], [4, 1], [8, 1], [12, 8]]
+
+    beta_fixed = 1
+    beta_hat = 1
+    min_beta = 0.02
+    max_beta = 1.19
+    auto_log=True
+    zmin = -5
+    zmax = 0
+    # auto_log=False
+    # zmin = 0
+    # zmax = 0.7
     def format_occ(occupancies):
         return occupancies.reshape(g.rows, g.cols)
 
@@ -389,43 +469,58 @@ def plot_all_heat_maps2():
             beta_hat = 1
         else:
             beta_hat = beta_simple_search(g, traj, model_goal, guess=beta_hat,
-                    verbose=i==13, min_beta=min_beta, max_beta=max_beta)
+                    verbose=True, min_beta=min_beta, max_beta=max_beta)
             print "{}: beta_hat={}".format(i+1, beta_hat)
 
         occupancies = format_occ(infer_occupancies(g, traj, beta=beta_hat,
                 dest_set=set([model_goal])))
         data1 = output_heat_map(g, occupancies, traj, start, dest_set=set([model_goal]),
-                zmin=zmin, zmax=0)
+                auto_logarithm=auto_log,
+                zmin=zmin, zmax=zmax)
 
         fixed_occupancies = format_occ(infer_occupancies(g, traj, beta=beta_fixed,
                 dest_set=set([model_goal])))
-        data2 = output_heat_map(g, fixed_occupancies, traj, start, dest_set=set([model_goal]),
-                zmin=zmin, zmax=0)
+        data2 = output_heat_map(g, fixed_occupancies, traj, start,
+                dest_set=set([model_goal]),
+                auto_logarithm=auto_log,
+                zmin=zmin, zmax=zmax)
+
+        true_occupancies = format_occ(infer_occupancies(g, traj, beta=true_beta,
+                dest_set=set([model_goal])))
+        data3 = output_heat_map(g, true_occupancies, traj, start,
+                dest_set=set([model_goal]),
+                auto_logarithm=auto_log,
+                zmin=zmin, zmax=zmax)
 
         first_title = "beta_hat={} (MLE)".format(beta_hat)
         if abs(beta_hat - max_beta) < 1e-4:
             first_title += " (beta at max!)"
 
-        fig = tools.make_subplots(rows=1, cols=2,
+        fig = tools.make_subplots(rows=1, cols=3,
                 subplot_titles=(
                     first_title,
-                    "beta={} (Ziebart beta)".format(beta_fixed)))
-        fig['layout'].update(title="Correct Goal<br>t={}".format(i))
+                    "beta={} (Ziebart beta)".format(beta_fixed),
+                    "ground truth beta={}".format(true_beta)))
+        fig['layout'].update(
+                title=("Correct Goal, movement reward={R}, " +
+                "{min_beta}&lt;beta&lt;{max_beta}<br>t={t}").format(
+                    t=i, R=R, min_beta=min_beta, max_beta=max_beta))
 
         for t in data1:
             fig.append_trace(t, 1, 1)
         for t in data2:
             fig.append_trace(t, 1, 2)
+        for t in data3:
+            fig.append_trace(t, 1, 3)
         # py.plot(fig, filename=u"output/{}.html".format(100+i))
         py.plot(fig, filename=u"output/{}.html".format(100+i),
             image=u'png', image_filename=u"output/{}.png".format(100+i),
             image_width=1400, image_height=750)
 
 
-
 if __name__ == '__main__':
     # log_likelihood_wrt_beta()
-    shortest_paths_beta_hat()
+    # shortest_paths_beta_hat()
     # plot_all_heat_maps3()
     # study_traj()
-    # plot_all_heat_maps2()
+    plot_all_heat_maps2()

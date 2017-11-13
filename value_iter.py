@@ -65,6 +65,7 @@ def dijkstra(mdp, init_state, verbose=False):
             pq.put((-reward + cost, s_prime))
 
     return -R_star
+
 def forwards_value_iter(*args, **kwargs):
     kwargs[u'forwards'] = True
     if 'lazy_init_state' not in kwargs:
@@ -83,7 +84,7 @@ def backwards_value_iter(*args, **kwargs):
 
 def _value_iter(mdp, init_state, update_threshold=1e-8, max_iters=None, nachum=False,
         fixed_init_val=0, beta=1, forwards=False, lazy_init_state=False, absorb=False,
-        verbose=False, super_verbose=False, init_vals=None, gamma=1):
+        verbose=False, super_verbose=False, init_vals=None, gamma=1, debug_iters=False):
     u"""
     Approximate the softmax value of reaching various destination states, starting
     from a given initial state.
@@ -275,4 +276,6 @@ def _value_iter(mdp, init_state, update_threshold=1e-8, max_iters=None, nachum=F
         if verbose or super_verbose:
             print "*", V.reshape(mdp.rows, mdp.cols)
 
+    if debug_iters:
+        return V, it
     return V

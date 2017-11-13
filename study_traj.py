@@ -69,38 +69,6 @@ def study_traj():
     #        beta_min=0.2, beta_max=11, beta_step=0.2, add_grad=True, add_beta_hat=True)
     # print _compute_gradient(g, traj, goal, 1)
 
-def beta_versus(g, start, actions, goal, beta1, beta2):
-    traj = build_traj_from_actions(g, start, actions)
-    o1 = infer_occupancies(g, traj, beta=beta1,
-        dest_set={goal}).reshape(g.rows, g.cols)
-    data1 = output_heat_map(g, o1, traj, start, {goal}, beta_hat=beta1, zmin=-10)
-
-    o2 = infer_occupancies(g, traj, beta=beta2,
-        dest_set={goal}).reshape(g.rows, g.cols)
-    data2 = output_heat_map(g, o2, traj, start, {goal}, beta_hat=beta2, zmin=-10)
-
-    o_diff = np.abs(o1 - o2)
-    data3 = output_heat_map(g, o_diff, traj, start, {goal}, beta_hat=beta1, zmin=-10)
-
-    import plotly.offline as py
-    import plotly.graph_objs as go
-    from plotly import offline
-    from plotly import tools as tools
-    fig = tools.make_subplots(rows=1, cols=3,
-            subplot_titles=(
-                "expected occupancies, beta={}".format(beta1),
-                "expected occupancies, beta={}".format(beta2),
-                "abs difference in ex. occupancies"))
-    fig['layout'].update(title="For small beta, ")
-
-    for t in data1:
-        fig.append_trace(t, 1, 1)
-    for t in data2:
-        fig.append_trace(t, 1, 2)
-    for t in data3:
-        fig.append_trace(t, 1, 3)
-    py.plot(fig, filename="output/beta_versus.html")
-
 
 def shard_study_traj2():
     N = 5
@@ -108,16 +76,6 @@ def shard_study_traj2():
     actions = [A.UP_RIGHT, A.UP, A.UP_RIGHT, A.UP]
     goal = g.coor_to_state(N//2, N-1)
 
-#def shard_study_traj3():
-N = 10
-g = GridWorldMDP(N, N, {}, default_reward=-24)
-start = 0
-actions = [A.UP, A.UP, A.UP]
-traj = build_traj_from_actions(g, start, actions)
-goal = g.coor_to_state(N//2, N-1)
-# plot_traj_log_likelihood(g, traj, goal, title="study_traj_3, problem A.4. Beta stupid search")
-# beta_versus(g, 0, actions, goal, 6.32, 5.85)
-# print(beta_stupid_search(g, traj, goal, guess=1, verbose=True))
 
 def compare_ex():
     import matplotlib
@@ -159,7 +117,99 @@ def expected_from_start():
     fig = go.Figure(data=data, layout=dict(title="occupancies from wait"))
     py.plot(fig)
 
-expected_from_start()
+def beta_versus(g, start, actions, goal, beta1, beta2, uid=0, title=None):
+    traj = build_traj_from_actions(g, start, actions)
+    o1 = infer_occupancies(g, traj, beta=beta1,
+        dest_set={goal}).reshape(g.rows, g.cols)
+    data1 = output_heat_map(g, o1, traj, start, {goal}, beta_hat=beta1, zmin=-10)
+
+    o2 = infer_occupancies(g, traj, beta=beta2,
+        dest_set={goal}).reshape(g.rows, g.cols)
+    data2 = output_heat_map(g, o2, traj, start, {goal}, beta_hat=beta2, zmin=-10)
+
+    o_diff = np.abs(o1 - o2)
+    data3 = output_heat_map(g, o_diff, traj, start, {goal}, beta_hat=beta1, zmin=-10)
+
+    import plotly.offline as py
+    import plotly.graph_objs as go
+    from plotly import offline
+    from plotly import tools as tools
+    fig = tools.make_subplots(rows=1, cols=3,
+            subplot_titles=(
+                "expected occupancies, beta={}".format(beta1),
+                "expected occupancies, beta={}".format(beta2),
+                "abs difference in ex. occupancies"))
+    fig['layout'].update(title=title)
+
+    for t in data1:
+        fig.append_trace(t, 1, 1)
+    for t in data2:
+        fig.append_trace(t, 1, 2)
+    for t in data3:
+        fig.append_trace(t, 1, 3)
+    # py.plot(fig, filename="output/beta_versus.html")
+    py.plot(fig, filename="output/beta_versus_{}.html".format(100+uid),
+            image='png', image_filename="output/beta_versus_{}.png".format(100+uid),
+            image_width=1400, image_height=750)
+
+#def shard_study_traj3():
+N = 30
+# R = -24
+R = -5
+g = GridWorldMDP(N, N, {}, default_reward=R)
+start = 0
+actions = [A.UP_RIGHT, A.UP_RIGHT, A.UP_RIGHT]
+traj = build_traj_from_actions(g, start, actions)
+goal = g.S - 1
+# goal = g.coor_to_state(N//2, N-1)
+# plot_traj_log_likelihood(g, traj, goal, title="study_traj_3, problem A.4. Beta stupid search")
+# beta_versus(g, 0, actions, goal, 6.32, 5.85)
+# print(beta_stupid_search(g, traj, goal, guess=1, verbose=True))
+# expected_from_start()
+
+
+# title="Comparing betas when movement reward={}"
+# beta1, beta2 = 0.6, 1
+# def compare(R):
+#     g = GridWorldMDP(N, N, {}, default_reward=R)
+#     beta_versus(g, start, actions, goal, beta1, beta2,
+#             uid=R, title=title.format(R))
+# 
+# compare(-36)
+# compare(-24)
+# compare(-10)
+# compare(-5)
+# compare(-4)
+# compare(-3)
+
+def compare_beta(betas):
+    import plotly.offline as py
+    import plotly.graph_objs as go
+    from plotly import offline
+    x = betas
+    y = []
+    for b in betas:
+        _, steps = backwards_value_iter(g, 0, beta=b, debug_iters=True)
+        print(x, steps)
+        y.append(steps)
+    data = [dict(x=x, y=y)]
+    layout = dict(
+        title='Softmax Value iteration on 30x30 Gridworld with movement reward=-24',
+        xaxis=dict(title='beta'),
+        yaxis=dict(title='iterations before convergence'),
+    )
+    fig = go.Figure(data=data, layout=layout)
+    py.plot(fig)
+
+#for i in [0.5, 1, 3, 5, 7, 9, 11, 11.1, 11.2, 11.3]
+# for i in [11.4, 11.5, 11.6, 11.7]:
+#for i in [11.51, 11.52]:
+# for i in [11.53, 11.54]:
+#     compare_beta(i)
+# compare_beta([0.5, 1,2, 3, 5, 7, 9, 11, 11.1, 11.2, 11.3, 11.4, 11.5])
+# compare_beta([0.5, 1,2,2.1,2.2,2.3,2.4])
+_, steps = backwards_value_iter(g, 0, beta=2.42)
+print(steps)
 
 # beta_versus(g, 0, actions, goal, 6.32, 0.3125)
 # assemble(g, 0, actions, goal)
