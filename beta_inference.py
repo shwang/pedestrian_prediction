@@ -44,8 +44,8 @@ def _make_harmonic(k, s=2, base=0.2):
         return max(k * 1/(s*i+1), base)
     return harmonic
 
-def beta_simple_search(g, traj, goal, guess=None, delta=0.2, beta_threshold=5e-3,
-        verbose=False, min_beta=0.7, max_beta=11, min_iters=5, max_iters=30):
+def beta_simple_search(g, traj, goal, guess=None, delta=1e-2, beta_threshold=5e-6,
+        verbose=False, min_beta=0.7, max_beta=11, min_iters=5, max_iters=20):
 
     if len(traj) == 0:
         return guess
@@ -55,8 +55,8 @@ def beta_simple_search(g, traj, goal, guess=None, delta=0.2, beta_threshold=5e-3
     for i in xrange(max_iters):
         assert lo <= mid <= hi
         diff = min(hi - mid, mid - lo)
-        mid_minus = mid - diff*delta
-        mid_plus = mid + diff*delta
+        mid_minus = mid - delta
+        mid_plus = mid + delta
 
         s_minus = _compute_score(g, traj, goal, mid_minus)
         s_plus = _compute_score(g, traj, goal, mid_plus)
