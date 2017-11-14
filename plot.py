@@ -1,16 +1,13 @@
 from __future__ import absolute_import
-from unittest import TestCase
 
 import numpy as np
-from numpy import testing as t
 
 from mdp import GridWorldMDP
-from value_iter import backwards_value_iter, forwards_value_iter
-from inference import sample_action, simulate, _display, infer_destination, \
-    infer_occupancies, infer_occupancies_from_start, infer_temporal_occupancies, \
-    _sum_rewards
-from beta_inference import *
-from beta_inference import _compute_score, _compute_gradient
+from mdp.softmax import backwards_value_iter, forwards_value_iter
+from inference.destination import infer_destination
+from inference.occupancy import *
+from util import sum_rewards, simulate, display, sample_action
+from inference.beta import *
 from itertools import izip
 
 Actions = GridWorldMDP.Actions

@@ -4,7 +4,7 @@ import numpy as np
 
 class MDP(object):
     def __init__(self, S, A, rewards, transition):
-        u"""
+        """
         Params:
             S [int]: The number of states.
             A [int]: The number of actions.
@@ -38,7 +38,7 @@ class GridWorldMDP(MDP):
         ABSORB = 8
 
     def __init__(self, rows, cols, reward_dict, goal_state=None, default_reward=0):
-        u"""
+        """
         An agent in a GridWorldMDP can move between adjacent/diagonal cells.
 
         If the agent chooses an illegal action it receives a float('-inf') reward
@@ -143,7 +143,7 @@ class GridWorldMDP(MDP):
             return s_prime
 
     def set_goal(self, goal_state):
-        u"""
+        """
         Reconfigure the goal state in this GridWorldMDP by allowing an agent at
         the goal state to use the ABSORB action at no cost. At all other states,
         ABSORB will be illegal (i.e., incur inf cost).
@@ -156,14 +156,14 @@ class GridWorldMDP(MDP):
             self.rewards[goal_state, self.Actions.ABSORB] = 0
 
     def set_all_goals(self):
-        u"""
+        """
         (Experimental)
         Allow ABSORB at every state.
         """
         self.rewards[:, self.Actions.ABSORB].fill(0)
 
     def coor_to_state(self, r, c):
-        u"""
+        """
         Params:
             r [int]: The state's row.
             c [int]: The state's column.
@@ -177,7 +177,7 @@ class GridWorldMDP(MDP):
         return r * self.cols + c
 
     def state_to_coor(self, s):
-        u"""
+        """
         Params:
             s [int]: The state.
 

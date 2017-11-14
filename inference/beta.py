@@ -1,16 +1,19 @@
 from __future__ import division
 from __future__ import absolute_import
-from value_iter import backwards_value_iter, forwards_value_iter
-from inference import sample_action, simulate, _display, infer_destination, \
-    infer_occupancies, infer_occupancies_from_start, infer_temporal_occupancies, \
-    _sum_rewards
+from mdp.softmax import backwards_value_iter, forwards_value_iter
+
+from .destination import infer_destination
+from .occupancy import infer_occupancies, infer_occupancies_from_start, \
+    infer_temporal_occupancies
+
+from util import sum_rewards, sample_action, simulate, display
 
 import numpy as np
 
-def _compute_score(g, traj, goal, beta, debug=False):
+def compute_score(g, traj, goal, beta, debug=False):
     assert len(traj) > 0, traj
     V = forwards_value_iter(g, goal, beta=beta)
-    R_traj = _sum_rewards(g, traj)
+    R_traj = sum_rewards(g, traj)
     start = traj[0][0]
     S_b = g.transition(*traj[-1])
 
@@ -19,11 +22,11 @@ def _compute_score(g, traj, goal, beta, debug=False):
     log_score = R_traj/beta + V[S_b] - V[start]
     return log_score
 
-def _compute_gradient(g, traj, goal, beta, debug=False):
+def compute_gradient(g, traj, goal, beta, debug=False):
     assert len(traj) > 0, traj
     start = traj[0][0]
     curr = g.transition(*traj[-1])
-    R_traj = _sum_rewards(g, traj)
+    R_traj = sum_rewards(g, traj)
     if curr == goal:
         ex_1 = 0
     else:
@@ -58,11 +61,11 @@ def beta_simple_search(g, traj, goal, guess=None, delta=1e-2, beta_threshold=5e-
         mid_minus = mid - delta
         mid_plus = mid + delta
 
-        s_minus = _compute_score(g, traj, goal, mid_minus)
-        s_plus = _compute_score(g, traj, goal, mid_plus)
+        s_minus = compute_score(g, traj, goal, mid_minus)
+        s_plus = compute_score(g, traj, goal, mid_plus)
 
         if verbose:
-            s_mid = _compute_score(g, traj, goal, mid)
+            s_mid = compute_score(g, traj, goal, mid)
             print "i={}\t mid={}\tscore={}\tgrad={}".format(
                     i, mid, s_mid, (s_plus-s_minus)*2/delta)
 
@@ -93,7 +96,7 @@ def beta_binary_search(g, traj, goal, guess=None, grad_threshold=1e-9, beta_thre
     mid = guess
     for i in xrange(max_iters):
         assert lo <= mid <= hi
-        grad = _compute_gradient(g, traj, goal, mid)
+        grad = compute_gradient(g, traj, goal, mid)
         if verbose:
             print u"i={}\t mid={}\t grad={}".format(i, mid, grad)
 
@@ -128,7 +131,7 @@ def beta_gradient_ascent(g, traj, goal, guess=3, learning_rate=_make_harmonic(5)
     history = []
     curr = guess
     for i in xrange(max_iters):
-        grad = _compute_gradient(g, traj, goal, curr)
+        grad = compute_gradient(g, traj, goal, curr)
         diff = alpha(i) * grad
 
         if diff > max_update:
@@ -143,7 +146,7 @@ def beta_gradient_ascent(g, traj, goal, guess=3, learning_rate=_make_harmonic(5)
             curr -= diff * 130
 
         if verbose:
-            history.append((curr, _compute_score(g, traj, goal, curr)))
+            history.append((curr, compute_score(g, traj, goal, curr)))
             print u"{}: beta={}\tscore={}\tgrad={}\tlearning_rate={}\tdiff={}".format(
                 i, curr, history[-1][1], grad, alpha(i), diff)
 

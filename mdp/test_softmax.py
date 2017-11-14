@@ -4,10 +4,9 @@ import numpy as np
 from numpy import testing as t
 
 from mdp import GridWorldMDP
-from value_iter import forwards_value_iter, backwards_value_iter, _calc_max_update, \
-        dijkstra, _value_iter
+from .softmax import forwards_value_iter, backwards_value_iter, _calc_max_update
 
-ni = float(u'-inf')
+ni = float('-inf')
 
 class TestUtilities(TestCase):
     def test_calc_max_update(self):
@@ -60,16 +59,3 @@ class TestForwardsValueIter(TestCase):
         for s in xrange(g.S):
             V_f = forwards_value_iter(g, s, lazy_init_state=True)
             t.assert_allclose(V_f[0], V_b[s], err_msg=V_b)
-
-class TestDijkstra(TestCase):
-    def test_simple(self):
-        g = GridWorldMDP(3, 1, {(2,0): -9}, default_reward=-1)
-        t.assert_allclose([0, -1, -10], dijkstra(g, 0))
-        t.assert_allclose([-1, 0, -9], dijkstra(g, 1))
-        t.assert_allclose([-2, -1, 0], dijkstra(g, 2))
-    def test_2d(self):
-        g = GridWorldMDP(3, 3, {(2,0): -3, (1,1): -4}, default_reward=-1)
-        expected = [-3, -2, -2,
-                    -2, -4, -1,
-                    -4, -1, 0]
-        t.assert_allclose(expected, dijkstra(g, g.coor_to_state(2,2)))

@@ -1,12 +1,11 @@
 from __future__ import division
 from __future__ import absolute_import
 import numpy as np
-import Queue
 import warnings
 from itertools import izip
 
 def _calc_max_update(V, V_prime):
-    u"""
+    """
     Use this rather than max(np.absolute(V_prime - V)) because an unchanged value
     of float('-inf') would result in a NaN change, when it should actually result
     in a 0 change.
@@ -27,45 +26,6 @@ def _calc_max_update(V, V_prime):
 
     return max_update
 
-def dijkstra(mdp, init_state, verbose=False):
-    u"""
-    Calculate the reward of the optimal trajectory to each state, starting from
-    `init_state`. Runs in |S| log |S| time, where |S| is the number of states.
-
-    Params:
-        mdp [GridWorldMDP]: The MDP.
-        init_state [int]: The starting state. The reward of the optimal trajectory
-            to the starting state is 0.
-
-    Returns:
-        R_star [np.ndarray]: An `mdp.S`-length vector, where the ith entry is
-            the reward of the optimal trajectory from the starting state to
-            state i.
-    """
-    # Dijkstra is only valid if all costs are nonnegative.
-    assert (mdp.rewards <= 0).all()
-
-    R_star = np.ndarray(mdp.S)
-    pq = Queue.PriorityQueue()
-    visited = set()
-    # entry := (cost, node)
-    pq.put((0, init_state))
-    while not pq.empty():
-        cost, state = pq.get()
-        if state in visited:
-            continue
-        R_star[state] = cost
-        visited.add(state)
-
-        for a in mdp.Actions:
-            reward = mdp.rewards[state, a]
-            s_prime = mdp._transition(state, a)
-            if reward == -np.inf or s_prime in visited:
-                continue
-            pq.put((-reward + cost, s_prime))
-
-    return -R_star
-
 def forwards_value_iter(*args, **kwargs):
     kwargs[u'forwards'] = True
     if 'lazy_init_state' not in kwargs:
@@ -85,7 +45,7 @@ def backwards_value_iter(*args, **kwargs):
 def _value_iter(mdp, init_state, update_threshold=1e-8, max_iters=None, nachum=False,
         fixed_init_val=0, beta=1, forwards=False, lazy_init_state=False, absorb=False,
         verbose=False, super_verbose=False, init_vals=None, gamma=1, debug_iters=False):
-    u"""
+    """
     Approximate the softmax value of reaching various destination states, starting
     from a given initial state.
 

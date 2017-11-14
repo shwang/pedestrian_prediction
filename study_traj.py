@@ -1,15 +1,14 @@
 from __future__ import absolute_import
-from unittest import TestCase
 
 import numpy as np
-from numpy import testing as t
 
-from mdp import GridWorldMDP
-from value_iter import *
-from inference import *
-from beta_inference import *
-from beta_inference import _compute_score, _compute_gradient
 from plot import *
+from mdp import GridWorldMDP
+from mdp.softmax import backwards_value_iter, forwards_value_iter
+from inference.destination import infer_destination
+from inference.occupancy import *
+from util import sum_rewards, simulate, display, sample_action
+from inference.beta import *
 from itertools import izip
 
 A = GridWorldMDP.Actions
@@ -154,8 +153,8 @@ def beta_versus(g, start, actions, goal, beta1, beta2, uid=0, title=None):
 
 #def shard_study_traj3():
 N = 30
-# R = -24
-R = -5
+R = -24
+# R = -5
 g = GridWorldMDP(N, N, {}, default_reward=R)
 start = 0
 actions = [A.UP_RIGHT, A.UP_RIGHT, A.UP_RIGHT]
@@ -163,8 +162,8 @@ traj = build_traj_from_actions(g, start, actions)
 goal = g.S - 1
 # goal = g.coor_to_state(N//2, N-1)
 # plot_traj_log_likelihood(g, traj, goal, title="study_traj_3, problem A.4. Beta stupid search")
-# beta_versus(g, 0, actions, goal, 6.32, 5.85)
-# print(beta_stupid_search(g, traj, goal, guess=1, verbose=True))
+beta_versus(g, 0, actions, goal, 6.32, 5.85)
+# print(beta_simple_search(g, traj, goal, guess=1, verbose=True))
 # expected_from_start()
 
 
@@ -208,8 +207,8 @@ def compare_beta(betas):
 #     compare_beta(i)
 # compare_beta([0.5, 1,2, 3, 5, 7, 9, 11, 11.1, 11.2, 11.3, 11.4, 11.5])
 # compare_beta([0.5, 1,2,2.1,2.2,2.3,2.4])
-_, steps = backwards_value_iter(g, 0, beta=2.42)
-print(steps)
+# _, steps = backwards_value_iter(g, 0, beta=1, debug_iters=True)
+# print(steps)
 
 # beta_versus(g, 0, actions, goal, 6.32, 0.3125)
 # assemble(g, 0, actions, goal)
