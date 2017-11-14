@@ -1,0 +1,1 @@
+perhaps add a unified interface between hard and softmax for easy abstraction outside this module

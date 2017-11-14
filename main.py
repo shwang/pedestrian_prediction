@@ -4,10 +4,10 @@ import numpy as np
 
 from mdp import GridWorldMDP
 from mdp.softmax import backwards_value_iter, forwards_value_iter
-from inference.destination import infer_destination
-from inference.occupancy import *
+from inference.softmax.destination import infer_destination
+from inference.softmax.occupancy import *
 from util import sum_rewards, simulate, display, sample_action, normalize
-from inference.beta import beta_gradient_ascent, beta_binary_search, compute_score
+from inference.softmax.beta import beta_gradient_ascent, beta_binary_search, compute_score
 from itertools import izip
 
 import plot

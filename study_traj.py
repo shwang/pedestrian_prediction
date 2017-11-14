@@ -5,10 +5,10 @@ import numpy as np
 from plot import *
 from mdp import GridWorldMDP
 from mdp.softmax import backwards_value_iter, forwards_value_iter
-from inference.destination import infer_destination
-from inference.occupancy import *
+from inference.softmax.destination import infer_destination
+from inference.softmax.occupancy import *
 from util import sum_rewards, simulate, display, sample_action
-from inference.beta import *
+from inference.softmax.beta import *
 from itertools import izip
 
 A = GridWorldMDP.Actions
