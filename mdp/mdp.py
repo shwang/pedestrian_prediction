@@ -37,7 +37,7 @@ class GridWorldMDP(MDP):
         DOWN_RIGHT = 7
         ABSORB = 8
 
-    def __init__(self, rows, cols, reward_dict, goal_state=None, default_reward=0):
+    def __init__(self, rows, cols, reward_dict={}, goal_state=None, default_reward=0):
         """
         An agent in a GridWorldMDP can move between adjacent/diagonal cells.
 
