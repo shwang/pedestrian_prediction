@@ -5,7 +5,6 @@ from numpy import random
 
 from mdp.softmax import backwards_value_iter, forwards_value_iter
 from util import sum_rewards, normalize
-import parameters
 
 def infer_destination(mdp, traj, beta=1, prior=None, dest_set=None,
         V_a_cached=None, V_b_cached=None, vi_precision=1e-5, nachum=False,
@@ -82,11 +81,8 @@ def infer_destination(mdp, traj, beta=1, prior=None, dest_set=None,
         print u"Warning: -inf traj_reward in infer_destination."
 
     def _calc_values(init_state):
-        if parameters.HARD_MAX_VALUES:
-            return dijkstra(mdp, init_state, verbose=verbose) / beta
-        else:
-            return backwards_value_iter_fn(mdp, init_state, beta=beta,
-                    update_threshold=vi_precision, verbose=verbose)
+        return backwards_value_iter_fn(mdp, init_state, beta=beta,
+                update_threshold=vi_precision, verbose=verbose)
 
     if V_a_cached is None:
         S_a = traj[0][0]

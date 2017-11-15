@@ -3,10 +3,9 @@ from __future__ import absolute_import
 from mdp.softmax import backwards_value_iter, forwards_value_iter
 
 from .destination import infer_destination
-from .occupancy import infer_occupancies, infer_occupancies_from_start, \
-    infer_temporal_occupancies
+from .occupancy import infer_occupancies, infer_occupancies_from_start
 
-from util import sum_rewards, sample_action, simulate, display
+from util import sum_rewards
 
 import numpy as np
 

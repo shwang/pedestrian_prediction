@@ -2,7 +2,6 @@ from __future__ import division
 from __future__ import absolute_import
 import numpy as np
 
-import parameters
 from .destination import infer_destination
 from mdp.softmax import backwards_value_iter, forwards_value_iter
 from mdp.hardmax import forwards_value_iter as dijkstra
