@@ -8,6 +8,7 @@ from mdp.softmax import backwards_value_iter, forwards_value_iter
 from inference.softmax.destination import infer_destination
 from inference.softmax.occupancy import *
 from util import sum_rewards, simulate, display, sample_action
+from util.softmax import simulate, sample_action
 from inference.softmax.beta import *
 from itertools import izip
 

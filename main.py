@@ -6,7 +6,8 @@ from mdp import GridWorldMDP
 from mdp.softmax import backwards_value_iter, forwards_value_iter
 from inference.softmax.destination import infer_destination
 from inference.softmax.occupancy import *
-from util import sum_rewards, simulate, display, sample_action, normalize
+from util import sum_rewards, display, normalize
+from util.softmax import simulate, sample_action
 from inference.softmax.beta import beta_gradient_ascent, beta_binary_search, compute_score
 from itertools import izip
 
