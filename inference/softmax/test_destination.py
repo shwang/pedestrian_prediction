@@ -6,7 +6,8 @@ from numpy import testing as t
 
 from mdp import GridWorldMDP
 from mdp.softmax import backwards_value_iter, forwards_value_iter
-from util import normalize, simulate
+from util import normalize
+from util.softmax import simulate
 from .destination import infer_destination
 
 Actions = GridWorldMDP.Actions

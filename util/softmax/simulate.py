@@ -3,7 +3,6 @@ import parameters
 import numpy as np
 
 from mdp.softmax import backwards_value_iter, forwards_value_iter
-from mdp.hardmax import dijkstra
 
 def simulate(mdp, initial_state, goal_state, beta=1, path_length=None):
     """
@@ -31,10 +30,7 @@ def simulate(mdp, initial_state, goal_state, beta=1, path_length=None):
     mdp.set_goal(goal_state)
 
     # V(state->goal)
-    if parameters.HARD_MAX_VALUES:
-        V = dijkstra(mdp, goal_state) / beta
-    else:
-        V = forwards_value_iter(mdp, goal_state, beta=beta, max_iters=1000)
+    V = forwards_value_iter(mdp, goal_state, beta=beta, max_iters=1000)
 
     if path_length == None:
         path_length = float(u'inf')
@@ -79,10 +75,7 @@ def sample_action(mdp, state, goal, beta=1, nachum=False, cached_values=None):
         V = cached_values
         mdp.set_goal(goal)
     else:
-        if parameters.HARD_MAX_VALUES:
-            V = dijkstra(mdp, goal, max_iters=1000) / beta
-        else:
-            V = forwards_value_iter(mdp, goal, beta=beta, max_iters=1000)
+        V = forwards_value_iter(mdp, goal, beta=beta, max_iters=1000)
 
     P = np.zeros(mdp.A)
     for a in xrange(mdp.A):
