@@ -4,7 +4,7 @@ import numpy as np
 
 from .destination import infer_destination
 from mdp.softmax import backwards_value_iter, forwards_value_iter
-from mdp.hardmax import forwards_value_iter as dijkstra
+from mdp.hardmax import backwards_value_iter as dijkstra
 from itertools import imap
 from util import normalize
 
@@ -213,3 +213,62 @@ def infer_occupancies_from_start(mdp, init_state, beta=1, prior=None, dest_set=N
 
     D_dest += V
     return np.exp(D_dest)
+
+def infer_temporal_occupancies_from_start(mdp, init_state, T, c_0, sigma_0, sigma_1,
+        beta=1, prior=None, dest_set=None,
+        backwards_value_iter_fn=backwards_value_iter, verbose=False):
+    """
+    Given a softmax agent's prior trajectory, approximate the probability
+    that a state will be occupied by the softmax agent at a given timestep
+    for the next T timesteps, assuming that all trajectories by the agent
+    will be equal to T actions in length.
+
+    Params:
+        mdp [GridWorldMDP]: The world that the agent is acting in.
+        traj [list-like]: A nonempty list of (state, action) tuples describing
+            the agent's trajectory so far. The current state of the agent is
+            inferred to be `mdp.transition(*traj[-1])`.
+        c_0 [float]: The expected mean reward collected by the agent every timestep.
+            This should be a negative number, and should be different for different
+            MDPs. (See Ziebart paper).
+        sigma_0, sigma_1 [float]: Numbers describing the variance of reward collected
+            by the agent over time. (See Ziebart paper).
+        T [int]: A positive number indicating the number of timesteps to calculate,
+            and also presumed length of any trajectory from the agent.
+        beta [float]: (optional) The softmax agent's irrationality constant.
+            Beta must be nonnegative. If beta=0, then the softmax agent
+            always acts optimally. If beta=float('inf'), then the softmax agent
+            acts completely randomly.
+        prior [list-like]: (optional) A normalized vector with length mdp.S, where
+            the ith entry is the prior probability that the agent's destination is
+            state i. By default, the prior probability is uniform over all states.
+        dest_set [set]: (optional) A set of states that could be the destination
+            state. Equivalent to setting the priors of states not in this set to
+            zero and renormalizing. By default, the dest_set contains all possible
+            destinations.
+        backwards_value_iter_fn [function]: (optional) Set this parameter to use
+            a custom version of backwards_value_iter. Used for testing.
+    Return:
+        D_dest_t [np.ndarray]: A mdp.S x T matrix, where the t-th column is a
+            normalized vector whose ith entry is the expected occupancy of
+            state i at time t+1, given the provided trajectory.
+    """
+    assert c_0 < 0, c_0
+    assert T > 0, T
+
+    D_s = infer_occupancies_from_start(mdp, init_state, beta=beta, prior=prior,
+            dest_set=dest_set,
+            backwards_value_iter_fn=backwards_value_iter, verbose=verbose)
+    R_star_b = dijkstra(mdp, init_state, verbose=verbose)
+
+    P_dest_t = np.ndarray([T, mdp.S])
+
+    for t in xrange(1, T + 1):
+        numer = -np.square(c_0*t - R_star_b)
+        denom = 2*(sigma_0**2 + t*sigma_1**2)
+        P_dest_t[t-1] = np.exp(numer/denom)
+
+    for s, occupancy in enumerate(D_s):
+        P_dest_t[:, s] = occupancy * normalize(P_dest_t[:, s])
+
+    return P_dest_t

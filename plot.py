@@ -6,6 +6,8 @@ from mdp import GridWorldMDP
 from mdp.softmax import backwards_value_iter, forwards_value_iter
 from inference.softmax.destination import infer_destination
 from inference.softmax.occupancy import *
+from inference import hardmax
+
 from util import sum_rewards, display
 from util.softmax import simulate, sample_action
 from inference.softmax.beta import *
@@ -97,7 +99,7 @@ def visualize_trajectory(g, start, goal, traj, beta=1, dest_set=None,
 
 
 def output_heat_map(g, occupancies, traj, start_state, dest_set, beta_hat=None,
-        zmin=None, zmax=0, auto_logarithm=True, plot=False):
+        zmin=None, zmax=0, auto_logarithm=True, plot=False, title=None, uid=0):
     import plotly.offline as py
     import plotly.graph_objs as go
     from plotly import offline
@@ -138,7 +140,8 @@ def output_heat_map(g, occupancies, traj, start_state, dest_set, beta_hat=None,
     data.append(dest_markers)
 
     if plot:
-        py.plot(data, filename='output/output_heat_map.html')
+        fig = go.Figure(data=data, layout=dict(title=title))
+        py.plot(fig, filename='output/output_heat_map_{}.html'.format(uid))
     return data
 
 def plot_all_heat_maps():

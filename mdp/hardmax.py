@@ -1,14 +1,17 @@
+from __future__ import division
 import numpy as np
 from sklearn.preprocessing import normalize
 import Queue
 
-def forwards_value_iter(mdp, goal_state, verbose=False):
-    return _value_iter(mdp, goal_state, forwards=True, verbose=verbose)
+def forwards_value_iter(mdp, goal_state, *args, **kwargs):
+    kwargs["forwards"] = True
+    return _value_iter(mdp, goal_state, *args, **kwargs)
 
-def backwards_value_iter(mdp, init_state, verbose=False):
-    return _value_iter(mdp, init_state, forwards=False, verbose=verbose)
+def backwards_value_iter(mdp, init_state, *args, **kwargs):
+    kwargs["forwards"] = False
+    return _value_iter(mdp, init_state, *args, **kwargs)
 
-def _value_iter(mdp, s, forwards, verbose=False):
+def _value_iter(mdp, s, forwards, beta=1, verbose=False):
     """
     If forwards is False,
     Calculate the reward of the optimal trajectory to each state, starting from
@@ -49,13 +52,13 @@ def _value_iter(mdp, s, forwards, verbose=False):
         if forwards:
             s_prime = state
             for (a, s) in mdp.reverse_neighbors[s_prime]:
-                reward = mdp.rewards[s, a]
+                reward = mdp.rewards[s, a] / beta
                 if reward == -np.inf or s in visited:
                     continue
                 pq.put((-reward + cost, s))
         else:
             for a in mdp.Actions:
-                reward = mdp.rewards[state, a]
+                reward = mdp.rewards[state, a] / beta
                 s_prime = mdp._transition(state, a)
                 if reward == -np.inf or s_prime in visited:
                     continue
@@ -63,7 +66,7 @@ def _value_iter(mdp, s, forwards, verbose=False):
 
     return -V
 
-def q_values(mdp, goal_state):
+def q_values(mdp, goal_state, beta=1):
     """
     Calculate a hardmax agent's Q values for each state action pair.
     For hardmax forwards_value_iter only. In other words, these q_values
@@ -76,7 +79,7 @@ def q_values(mdp, goal_state):
     """
     mdp = mdp.copy()
     mdp.set_goal(goal_state)
-    V = forwards_value_iter(mdp, goal_state)
+    V = forwards_value_iter(mdp, goal_state, beta=beta)
 
     Q = np.empty([mdp.S, mdp.A])
     Q.fill(-np.inf)
@@ -85,11 +88,11 @@ def q_values(mdp, goal_state):
             Q[s, mdp.Actions.ABSORB] = 0
         else:
             for a in range(mdp.A):
-                Q[s,a] = mdp.rewards[s,a] + V[mdp.transition(s,a)]
+                Q[s,a] = mdp.rewards[s,a]/beta + V[mdp.transition(s,a)]
     assert Q.shape == (mdp.S, mdp.A)
     return Q
 
-def action_probabilities(mdp, goal_state, q_cached=None):
+def action_probabilities(mdp, goal_state, beta=1, q_cached=None):
     """
     At each state, calculate the softmax probability of each action
     using hardmax Q values.
@@ -102,7 +105,7 @@ def action_probabilities(mdp, goal_state, q_cached=None):
     if q_cached is not None:
         Q = q_cached
     else:
-        Q = q_values(mdp, goal_state)
+        Q = q_values(mdp, goal_state, beta=beta)
 
     np.exp(Q, out=Q)
     return normalize(Q, norm='l1', copy=False)

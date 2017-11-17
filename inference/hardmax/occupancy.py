@@ -5,8 +5,8 @@ import numpy as np
 
 from mdp.hardmax import action_probabilities
 
-def infer_from_start(mdp, init_state, dest, T=5, verbose=False,
-        cached_action_prob=None, all_steps=False):
+def infer_from_start(mdp, init_state, dest, T=5, verbose=False, beta=1,
+        cached_action_prob=None, all_steps=False, combine=False):
     # if prior is None:
     #     prior = np.ones(mdp.S) / mdp.S
     # if dest_set is not None:
@@ -26,7 +26,7 @@ def infer_from_start(mdp, init_state, dest, T=5, verbose=False,
         #         continue
         #     action_prob = {}
         #     action_prob[dest] = action_probabilities(mdp, dest)
-        action_prob = action_probabilities(mdp, dest)
+        action_prob = action_probabilities(mdp, dest, beta=beta)
 
     res = np.zeros([T+1, mdp.S])
     res[0][init_state] = 1
@@ -44,5 +44,7 @@ def infer_from_start(mdp, init_state, dest, T=5, verbose=False,
 
     if all_steps:
         return res
+    elif combine:
+        return np.sum(res[1:], axis=0)/T
     else:
         return res[T]

@@ -7,10 +7,13 @@ from mdp import GridWorldMDP
 from mdp.softmax import backwards_value_iter, forwards_value_iter
 from inference.softmax.destination import infer_destination
 from inference.softmax.occupancy import *
-from util import sum_rewards, simulate, display, sample_action
+from util import sum_rewards, display
 from util.softmax import simulate, sample_action
 from inference.softmax.beta import *
 from itertools import izip
+
+from inference import hardmax
+from inference import softmax
 
 A = GridWorldMDP.Actions
 
@@ -153,17 +156,19 @@ def beta_versus(g, start, actions, goal, beta1, beta2, uid=0, title=None):
             image_width=1400, image_height=750)
 
 #def shard_study_traj3():
-N = 30
-R = -24
-# R = -5
+N = 20
+# N = 13
+# R = -24
+R = -3
 g = GridWorldMDP(N, N, {}, default_reward=R)
-start = 0
+#start = 0
+start = g.coor_to_state(N//2, 0)
 actions = [A.UP_RIGHT, A.UP_RIGHT, A.UP_RIGHT]
 traj = build_traj_from_actions(g, start, actions)
-goal = g.S - 1
-# goal = g.coor_to_state(N//2, N-1)
+# goal = g.S - 1
+goal = g.coor_to_state(N//2, N-1)
 # plot_traj_log_likelihood(g, traj, goal, title="study_traj_3, problem A.4. Beta stupid search")
-beta_versus(g, 0, actions, goal, 6.32, 5.85)
+# beta_versus(g, 0, actions, goal, 6.32, 5.85)
 # print(beta_simple_search(g, traj, goal, guess=1, verbose=True))
 # expected_from_start()
 
@@ -213,3 +218,80 @@ def compare_beta(betas):
 
 # beta_versus(g, 0, actions, goal, 6.32, 0.3125)
 # assemble(g, 0, actions, goal)
+
+def hardness_versus(g, start, goal, beta=1, uid=0, title=None):
+    traj = []
+    for T in range(1, N):
+        o1 = hardmax.infer_from_start(g, start, dest=goal, T=T
+                ).reshape(g.rows, g.cols)
+        data1 = output_heat_map(g, o1, traj, start, {goal}, zmax=0.6, zmin=0,
+                title=title, uid=T, auto_logarithm=False)
+
+        o2 = softmax.infer_temporal_occupancies_from_start(g, start, # beta=beta1,
+            T=N, c_0=R, sigma_0=0.1, sigma_1=0.4,
+            dest_set={goal})[T-1].reshape(g.rows, g.cols)
+        data2 = output_heat_map(g, o2, traj, start, {goal}, zmax=0.6, zmin=0,
+                auto_logarithm=False)
+
+        o_diff = np.abs(o1 - o2)
+        data3 = output_heat_map(g, o_diff, traj, start, {goal}, zmax=0.6, zmin=0,
+                auto_logarithm=False)
+
+        import plotly.offline as py
+        import plotly.graph_objs as go
+        from plotly import offline
+        from plotly import tools as tools
+        fig = tools.make_subplots(rows=1, cols=3,
+                subplot_titles=(
+                    "hardmax expected occupancies @ T={}".format(T),
+                    "softmax expected occupancies @ T={}".format(T) +
+                        "<br>(Ziebart Normal approx of cost consumption)",
+                    "abs difference in ex. occupancies"))
+        fig['layout'].update(title=title)
+
+        for t in data1:
+            fig.append_trace(t, 1, 1)
+        for t in data2:
+            fig.append_trace(t, 1, 2)
+        for t in data3:
+            fig.append_trace(t, 1, 3)
+        # py.plot(fig, filename="output/beta_versus.html")
+        py.plot(fig, filename="output/hardvsoft{}.html".format(100+T),
+                image='png', image_filename="output/hardVsoft{}.png".format(100+T),
+                image_width=1400, image_height=750)
+
+def hardmax_plots(g, start, goal, beta1=1, beta2=10, extra_steps=5):
+    import plotly.offline as py
+    import plotly.graph_objs as go
+    from plotly import offline
+    from plotly import tools as tools
+    for T in range(N+extra_steps):
+
+        o1 = hardmax.infer_from_start(g, start, dest=goal, beta=beta1, T=T
+                ).reshape(g.rows, g.cols)
+        data1 = output_heat_map(g, o1, [], start, {goal}, zmin=-9, zmax=0)
+
+        o2 = hardmax.infer_from_start(g, start, dest=goal, beta=beta2, T=T
+                ).reshape(g.rows, g.cols)
+        data2 = output_heat_map(g, o2, [], start, {goal}, zmin=-9, zmax=0)
+
+        fig = tools.make_subplots(rows=1, cols=2,
+                subplot_titles=(
+                    "beta={}".format(beta1),
+                    "beta={}".format(beta2)))
+        title = "hardmax expected occupancies @ T={}".format(T)
+        fig['layout'].update(title=title)
+
+        for t in data1:
+            fig.append_trace(t, 1, 1)
+        for t in data2:
+            fig.append_trace(t, 1, 2)
+
+        py.plot(fig, filename="output/hardmax{}.html".format(100+T),
+                image='png', image_filename="hardmax{}.png".format(100+T),
+                image_width=1400, image_height=750)
+
+
+
+# hardness_versus(g, start, goal)
+hardmax_plots(g, start, goal, 1, .1, extra_steps=12)
