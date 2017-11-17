@@ -37,7 +37,9 @@ class GridWorldMDP(MDP):
         DOWN_RIGHT = 7
         ABSORB = 8
 
-    def __init__(self, rows, cols, reward_dict={}, goal_state=None, default_reward=0):
+    # TODO: investigate how goal state works nowadays
+    def __init__(self, rows, cols, reward_dict={}, goal_state=None, default_reward=0,
+            euclidean_rewards=False):
         """
         An agent in a GridWorldMDP can move between adjacent/diagonal cells.
 
@@ -53,6 +55,8 @@ class GridWorldMDP(MDP):
                 If not provided, then goal_state is 0 everywhere.
             default_reward [float]: (optional) Every reward not set by reward_dict
                 will receive this default reward instead.
+            euclidean_rewards [bool]: (optional) If True, then scale rewards for moving
+                diagonally by sqrt(2).
         """
         assert rows > 0
         assert cols > 0
@@ -85,7 +89,12 @@ class GridWorldMDP(MDP):
                     self.neighbors[s].append((a, s_prime))
                     self.reverse_neighbors[s_prime].append((a, s))
                 else:
-                    rewards[s, a] = float(u'-inf')
+                    rewards[s, a] = -np.inf
+
+        if euclidean_rewards:
+            for a in self.diagonal_actions:
+                col = rewards[:, a]
+                np.multiply(col, np.sqrt(2), out=col)
 
         super(GridWorldMDP, self).__init__(S, A, rewards, self._transition)
 
@@ -186,3 +195,10 @@ class GridWorldMDP(MDP):
         """
         assert s < self.rows * self.cols
         return s // self.cols, s % self.cols
+
+GridWorldMDP.diagonal_actions = {
+        GridWorldMDP.Actions.UP_LEFT,
+        GridWorldMDP.Actions.UP_RIGHT,
+        GridWorldMDP.Actions.DOWN_LEFT,
+        GridWorldMDP.Actions.DOWN_RIGHT,
+}

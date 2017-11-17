@@ -160,7 +160,7 @@ N = 20
 # N = 13
 # R = -24
 R = -3
-g = GridWorldMDP(N, N, {}, default_reward=R)
+g = GridWorldMDP(N, N, {}, default_reward=R, euclidean_rewards=True)
 #start = 0
 start = g.coor_to_state(N//2, 0)
 actions = [A.UP_RIGHT, A.UP_RIGHT, A.UP_RIGHT]
@@ -260,12 +260,16 @@ def hardness_versus(g, start, goal, beta=1, uid=0, title=None):
                 image='png', image_filename="output/hardVsoft{}.png".format(100+T),
                 image_width=1400, image_height=750)
 
-def hardmax_plots(g, start, goal, beta1=1, beta2=10, extra_steps=5):
+def hardmax_plots(g, start, goal, beta1=1, beta2=10, extra_steps=5, uid='',
+        delay=None):
     import plotly.offline as py
     import plotly.graph_objs as go
     from plotly import offline
     from plotly import tools as tools
     for T in range(N+extra_steps):
+        if delay is not None:
+            import time
+            time.sleep(delay)
 
         o1 = hardmax.infer_from_start(g, start, dest=goal, beta=beta1, T=T
                 ).reshape(g.rows, g.cols)
@@ -287,11 +291,14 @@ def hardmax_plots(g, start, goal, beta1=1, beta2=10, extra_steps=5):
         for t in data2:
             fig.append_trace(t, 1, 2)
 
-        py.plot(fig, filename="output/hardmax{}.html".format(100+T),
-                image='png', image_filename="hardmax{}.png".format(100+T),
+        py.plot(fig, filename="output/hardmax{}_{}.html".format(uid, 100+T),
+                image='png', image_filename="hardmax{}_{}.png".format(uid, 100+T),
                 image_width=1400, image_height=750)
 
 
 
 # hardness_versus(g, start, goal)
-hardmax_plots(g, start, goal, 1, .1, extra_steps=12)
+for uid, (beta1, beta2) in enumerate([(1, 10), (10, 100), (1, 0.1)]):
+    hardmax_plots(g, start, goal, beta1, beta2, extra_steps=12, uid=uid,
+            delay=3)
+# hardmax_plots(g, start, goal, 1, .1, extra_steps=12)
