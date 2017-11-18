@@ -107,5 +107,9 @@ def action_probabilities(mdp, goal_state, beta=1, q_cached=None):
     else:
         Q = q_values(mdp, goal_state, beta=beta)
 
+    # Use amax to mitigate numerical errors
+    amax = np.amax(Q, axis=1, keepdims=1)
+    np.subtract(Q, amax, out=Q)
+
     np.exp(Q, out=Q)
     return normalize(Q, norm='l1', copy=False)

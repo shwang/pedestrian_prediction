@@ -68,11 +68,11 @@ class TestActionProbabilities(TestCase):
     def test_one_choice(self):
         ni = -np.inf
         q_cached = np.array([[1, ni, ni], [ni, 1, ni], [ni, ni, 1]])
-        P = action_probabilities("not an mdp", 3, q_cached)
+        P = action_probabilities("not an mdp", 3, q_cached=q_cached)
         t.assert_allclose(P, [[1, 0, 0], [0, 1, 0], [0, 0, 1]])
 
     def test_uniform(self):
         q_cached = np.zeros([3,3])
-        P = action_probabilities("not an mdp", 3, q_cached)
+        P = action_probabilities("not an mdp", 3, q_cached=q_cached)
         t.assert_allclose(P, np.ones([3,3])/3)
 
