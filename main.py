@@ -1,108 +1,39 @@
-from __future__ import absolute_import
+from __future__ import division
 
 import numpy as np
 
-from mdp import GridWorldMDP
-from inference.hardmax.occupancy import *
-from util import sum_rewards, display, normalize
-from util.hardmax import simulate, sample_action
-from itertools import izip
+from pp.mdp import GridWorldMDP
+from pp.inference import hardmax as inf
+from pp.plot import plot_heat_maps
 
-import plot
+A = GridWorldMDP.Actions
 
-Actions = GridWorldMDP.Actions
+def andrea_states():
+    """
+    Infer `T` hardmax state probability grids, one for each timestep.
+    """
+    T = 5
+    N = 20
+    R = -1
+    beta = 1
+    g = GridWorldMDP(N, N, default_reward=R)
 
-def test_sample_action(beta=1, trials=10):
-    g = GridWorldMDP(10, 10, {}, default_reward=-9)
-    for i in xrange(trials):
-        print Actions(sample_action(g, 25, 0, beta=beta))
+    init_state = g.coor_to_state(0, 0)
+    goal = g.coor_to_state(N-1, N//2)
 
-def test_simulate_tiny_dest_set():
-    g = GridWorldMDP(1, 3, {}, default_reward=-9)
-    start = 0
-    goal = g.coor_to_state(0, 2)
-    traj = simulate(g, 0, goal)
-    traj = traj[:-2]
-    dest_set = set([(0,0), (0,2)])
-    plot.visualize_trajectory(g, start, goal, traj, dest_set=dest_set, heat_maps=(0,))
+    # A numpy.ndarray with dimensions (T x g.rows x g.cols).
+    # `state_prob[t]` holds the exact state probabilities for
+    # a beta-irrational, softmax-action-choice-over-hardmax-values
+    # agent.
+    state_prob = inf.state.infer_from_start(g, init_state, goal,
+            T=T, beta=beta, all_steps=True).reshape(T+1, g.rows, g.cols)
+    print(state_prob)
 
-def test_simulate_big_dest_set():
-    g = GridWorldMDP(10, 10, {}, default_reward=-9)
-    start = 0
-    goal = g.coor_to_state(5, 4)
-    traj = simulate(g, 0, goal)
-    traj = traj[:-3]
-    dest_set = set([(5,7), (0,4), (9, 9)])
-    plot.visualize_trajectory(g, start, goal, traj, dest_set=dest_set, heat_maps=(0,))
+    # Plot each of the T heatmaps
+    # beware: heat map's color scale changes with each plot
+    for t, p in enumerate(state_prob):
+        title = "t={}".format(t)
+        plot_heat_maps(g, init_state, [p], [title], stars_grid=[goal],
+                auto_logarithm=False)
 
-def test_simulate_huge_dest_set():
-    g = GridWorldMDP(80, 80, {}, default_reward=-9)
-    start = 0
-    goal = g.coor_to_state(79, 79)
-    traj = simulate(g, 0, goal, path_length=20)
-    dest_set = set([(79, 9), (50, 79), (20, 50)])
-    plot.visualize_trajectory(g, start, goal, traj, dest_set=dest_set, heat_maps=(0,))
-
-def test_simulate_big_beta():
-    g = GridWorldMDP(15, 15, {}, default_reward=-40)
-    start = 0
-    goal = g.coor_to_state(14, 13)
-    traj = simulate(g, 0, goal, beta=3, path_length=7)
-    traj = traj[:-3]
-    dest_set = set([(6,9), (0,4), (14, 13)])
-    plot.visualize_trajectory(g, start, goal, traj, dest_set=dest_set, beta=1, heat_maps=(0,))
-    plot.visualize_trajectory(g, start, goal, traj, dest_set=dest_set, beta=2, heat_maps=(0,))
-    plot.visualize_trajectory(g, start, goal, traj, dest_set=dest_set, beta=3, heat_maps=(0,))
-    plot.visualize_trajectory(g, start, goal, traj, dest_set=dest_set, beta=4, heat_maps=(0,))
-
-def test_temporal_occupancy():
-    g = GridWorldMDP(15, 15, {}, default_reward=-40)
-    start = 0
-    goal = g.coor_to_state(14, 13)
-    traj = simulate(g, 0, goal, beta=3, path_length=7)
-    traj = traj[:-3]
-    dest_set = set([(6,9), (0,4), (14, 13)])
-    # dest_set={g.coor_to_state(*d) for d in dest_set}
-    plot.visualize_trajectory(g, start, goal, traj, T=10, c_0=-40, sigma_0=5, sigma_1=15, beta=2,
-            dest_set=dest_set, heat_maps=(0, 1, 2, 5, 10), zmin=-20, zmax=0)
-
-def test_expected_occupancy_start():
-    g = GridWorldMDP(1, 8, {}, default_reward=-24)
-    start = g.coor_to_state(0,4)
-    beta = 2
-    dest_set = set([(0,0), (0,6)])
-    dest_set=set(g.coor_to_state(*d) for d in dest_set)
-    D = infer_occupancies_from_start(g, start,
-            beta=beta, dest_set=dest_set).reshape(g.rows, g.cols)
-
-    print u"expected occupancies:"
-    print D
-
-    occupancies = D
-    data = []
-
-    import plotly.offline as py
-    import plotly.graph_objs as go
-    from plotly import offline
-    from plotly import tools as tools
-
-    hm = go.Heatmap(z=np.log(occupancies.T))
-    data.append(hm)
-
-    if dest_set is not None:
-        x, y = izip(*[g.state_to_coor(s) for s in dest_set])
-        dest_markers = go.Scatter(x=x, y=y,
-            mode=u'markers', marker=dict(size=20, color=u"white", symbol=u"star"))
-        data.append(dest_markers)
-
-    py.plot(data, filename=u'expected_occup.html')
-
-# def value_iter_comparison():
-#     for beta in [2,4,6,8]:
-#
-#     value_k
-# test_simulate_tiny_dest_set()
-# test_simulate_big_dest_set()
-# test_sample_action(2)
-# test_simulate_big_beta()
-# test_expected_occupancy_start()
+andrea_states()

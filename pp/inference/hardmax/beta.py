@@ -1,10 +1,9 @@
 from __future__ import division
 
-from mdp.hardmax import *
-
-import inference.grad_descent_shared as shared
-
 import numpy as np
+
+from ...mdp.hardmax import action_probabilities
+from .. import grad_descent_shared as shared
 
 def compute_score(g, traj, goal, beta, cached_P=None, debug=False):
     assert len(traj) > 0, traj
@@ -49,13 +48,13 @@ def gradient_ascent(g, traj, goal, *args, **kwargs):
     return shared.gradient_ascent(g, traj, goal, *args, **kwargs)
 
 def _main():
-    from mdp import GridWorldMDP
-    from util import display, build_traj_from_actions
+    from ...mdp import GridWorldMDP
+    from ...util import display, build_traj_from_actions
     N = 5
     init = 0
     goal = N*N-1
-    default_reward = -1
-    g = GridWorldMDP(N, N, default_reward=default_reward, euclidean_rewards=True)
+    R = -1
+    g = GridWorldMDP(N, N, default_reward=R)
     A = [g.Actions.UP, g.Actions.RIGHT, g.Actions.UP_RIGHT]
 
     for a1 in A:

@@ -2,8 +2,7 @@ import numpy as np
 
 from itertools import imap
 
-import inference.hardmax as inf_hardmax
-inf_default=inf_hardmax
+from ..parameters import inf_default
 
 def sum_rewards(mdp, traj):
     return sum(imap(lambda x: mdp.rewards[x[0], x[1]], traj))

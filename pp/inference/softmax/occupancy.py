@@ -1,12 +1,13 @@
 from __future__ import division
-from __future__ import absolute_import
+
 import numpy as np
 
-from .destination import infer_destination
-from mdp.softmax import backwards_value_iter, forwards_value_iter
-from mdp.hardmax import backwards_value_iter as dijkstra
 from itertools import imap
-from util import normalize
+
+from .destination import infer_destination
+from ...mdp.softmax import backwards_value_iter, forwards_value_iter
+from ...mdp.hardmax import backwards_value_iter as dijkstra
+from ...util import normalize
 
 def infer_occupancies(mdp, traj, beta=1, gamma=1, prior=None, dest_set=None,
         vi_precision=1e-7,

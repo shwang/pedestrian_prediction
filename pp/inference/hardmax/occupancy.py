@@ -1,9 +1,8 @@
 from __future__ import division
-from __future__ import absolute_import
 
 import numpy as np
 
-from mdp.hardmax import action_probabilities
+from ...mdp.hardmax import action_probabilities
 
 def infer_from_start(mdp, init_state, dest, T=None, verbose=False, beta=1,
         cached_action_prob=None):

@@ -1,6 +1,6 @@
 import numpy as np
 
-from mdp.hardmax import action_probabilities
+from ...mdp.hardmax import action_probabilities
 
 def simulate(mdp, initial_state, goal_state, beta=1, path_length=None):
     """

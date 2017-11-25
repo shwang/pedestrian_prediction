@@ -1,10 +1,10 @@
 from __future__ import division
-from __future__ import absolute_import
 import numpy as np
 from numpy import random
 
-from mdp.softmax import backwards_value_iter, forwards_value_iter
-from util import sum_rewards, normalize
+from ...mdp.softmax import backwards_value_iter, forwards_value_iter
+
+from ...util import sum_rewards, normalize
 
 def infer_destination(mdp, traj, beta=1, prior=None, dest_set=None,
         V_a_cached=None, V_b_cached=None, vi_precision=1e-5, nachum=False,

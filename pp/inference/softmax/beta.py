@@ -1,14 +1,13 @@
 from __future__ import division
-from __future__ import absolute_import
-from mdp.softmax import backwards_value_iter, forwards_value_iter
+
+import numpy as np
+
+from ...mdp.softmax import backwards_value_iter, forwards_value_iter
+from ...util import sum_rewards
 
 from .destination import infer_destination
 from .occupancy import infer_occupancies, infer_occupancies_from_start
-import inference.grad_descent_shared as shared
-
-from util import sum_rewards
-
-import numpy as np
+from .. import grad_descent_shared as shared
 
 def compute_score(g, traj, goal, beta, debug=False):
     assert len(traj) > 0, traj
@@ -21,6 +20,7 @@ def compute_score(g, traj, goal, beta, debug=False):
         print V[S_b], V[start], V[S_b] - V[start]
     log_score = R_traj/beta + V[S_b] - V[start]
     return log_score
+
 
 def compute_gradient(g, traj, goal, beta, debug=False):
     assert len(traj) > 0, traj
@@ -42,13 +42,16 @@ def compute_gradient(g, traj, goal, beta, debug=False):
     else:
         return grad_log_score
 
+
 def simple_search(g, traj, goal, *args, **kwargs):
     kwargs["compute_score"] = compute_score
     return shared.simple_search(g, traj, goal, *args, **kwargs)
 
+
 def binary_search(g, traj, goal, *args, **kwargs):
     kwargs["compute_grad"] = compute_grad
     return shared.binary_search(g, traj, goal, *args, **kwargs)
+
 
 def gradient_ascent(g, traj, goal, *args, **kwargs):
     kwargs["compute_score"] = compute_score

@@ -1,13 +1,13 @@
 import numpy as np
 
-from mdp import GridWorldMDP
-from inference.softmax.destination import infer_destination
-from inference import hardmax
+from ..mdp import GridWorldMDP
+from ..inference.softmax.destination import infer_destination
+from ..inference import hardmax
 
-from util import sum_rewards, display, build_traj_from_actions
-from util.hardmax import simulate, sample_action
+from ..util import sum_rewards, display, build_traj_from_actions
+from ..util.hardmax import simulate, sample_action
 
-from parameters import inf_default
+from ..parameters import inf_default
 
 Actions = GridWorldMDP.Actions
 
@@ -84,9 +84,11 @@ def subplots(subplot_list, title_list, title=None, save_png=False):
     show_plot(fig, save_png)
 
 
-def show_plot(fig, save_png=False, uid=100):
+uid_pointer = [100]
+def show_plot(fig, save_png=False):
     import plotly.offline as py
-    uid += 1
+    uid_pointer[0] += 1
+    uid = uid_pointer[0]
     if not save_png:
         py.plot(fig, filename="output/out{}.html".format(uid))
     else:
