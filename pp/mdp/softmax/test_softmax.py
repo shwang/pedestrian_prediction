@@ -1,9 +1,8 @@
-from __future__ import absolute_import
 from unittest import TestCase
 import numpy as np
 from numpy import testing as t
 
-from mdp import GridWorldMDP
+from ..mdp import GridWorldMDP
 from .softmax import forwards_value_iter, backwards_value_iter, _calc_max_update
 
 ni = float('-inf')

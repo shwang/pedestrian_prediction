@@ -1,6 +1,6 @@
 import numpy as np
 
-from mdp.softmax import backwards_value_iter, forwards_value_iter
+from ...mdp.softmax import backwards_value_iter, forwards_value_iter
 
 def simulate(mdp, initial_state, goal_state, beta=1, path_length=None):
     """

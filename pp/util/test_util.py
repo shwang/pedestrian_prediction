@@ -1,10 +1,9 @@
-from __future__ import absolute_import
 from unittest import TestCase
 import numpy as np
 from numpy import testing as t
 
-from util import normalize, display, sum_rewards
-from mdp import GridWorldMDP
+from .util import normalize, display, sum_rewards
+from ..mdp import GridWorldMDP
 
 Actions = GridWorldMDP.Actions
 

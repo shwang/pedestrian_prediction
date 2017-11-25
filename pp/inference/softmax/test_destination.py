@@ -1,13 +1,12 @@
 from __future__ import division
-from __future__ import absolute_import
 from unittest import TestCase
 import numpy as np
 from numpy import testing as t
 
-from mdp import GridWorldMDP
-from mdp.softmax import backwards_value_iter, forwards_value_iter
-from util import normalize
-from util.softmax import simulate
+from ...mdp import GridWorldMDP
+from ...mdp.softmax import backwards_value_iter, forwards_value_iter
+from ...util import normalize
+from ...util.softmax import simulate
 from .destination import infer_destination
 
 Actions = GridWorldMDP.Actions

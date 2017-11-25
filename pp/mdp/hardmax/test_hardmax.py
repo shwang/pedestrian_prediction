@@ -1,9 +1,8 @@
-from __future__ import absolute_import
 from unittest import TestCase
 import numpy as np
 from numpy import testing as t
 
-from mdp import GridWorldMDP
+from ..mdp import GridWorldMDP
 from .hardmax import backwards_value_iter, forwards_value_iter, q_values
 from .hardmax import action_probabilities
 
