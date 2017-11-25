@@ -119,6 +119,26 @@ def _occ_starter(N, R, mode):
     return g, T, start, goal, model_goal
 
 
+def _traj_starter(N, init_state, mode):
+    A = Actions
+    g = GridWorldMDP(N, N)
+    if mode == "diag":
+        start = 0
+        actions = [A.UP_RIGHT] * (N-1)
+    elif mode == "horizontal":
+        start = g.coor_to_state(0, N//2)
+        actions = [A.RIGHT] * (N-1)
+    elif mode == "vertical":
+        start = g.coor_to_state(N//2, 0)
+        actions = [A.UP] * (N-1)
+    elif mode == "diag-crawl":
+        start = 0
+        actions = [A.RIGHT] * (N-1) + [A.UP] * (N-1)
+    else:
+        raise Exception("invalid mode: {}".format(mode))
+    return build_traj_from_actions(g, start, actions)
+
+
 def _traj_beta_inf_loop(on_loop, g, traj, goal, inf_mod=inf_default, guess=1,
         min_beta=0.01, max_beta=100, verbose=True):
     for i in xrange(len(traj)):
@@ -132,12 +152,11 @@ def _traj_beta_inf_loop(on_loop, g, traj, goal, inf_mod=inf_default, guess=1,
                     verbose=verbose, min_beta=min_beta, max_beta=max_beta)
             if verbose:
                 print "{}: beta_hat={}".format(i+1, beta_hat)
-        on_loop(tr, beta_hat, i)
+        on_loop(tr, round(beta_hat, 3), i)
 
 
 def simple_ground_truth_inf(mode="diag", N=30, R=-3, true_beta=0.001,
-        min_beta=0.01, max_beta=100, zmin=-5, zmax=0, inf_mod=inf_default,
-        title=""):
+        zmin=-5, zmax=0, inf_mod=inf_default, title=None):
     g, T, start, goal, model_goal = _occ_starter(N, R, mode)
 
     traj = simulate(g, start, goal, beta=true_beta)
@@ -158,37 +177,44 @@ def simple_ground_truth_inf(mode="diag", N=30, R=-3, true_beta=0.001,
                     "beta={}".format(beta_fixed),
                     "ground truth beta={}".format(true_beta),
                     )
-        title = ("Hardmax expected occupancies (for trajectories of length {T}) <br>t={t}"
-            ).format(T=T, t=t)
+        _title = title or "Hardmax expected occupancies" + \
+                " (for trajectories of length {T}) <br>t={t}"
+        _title = _title.format(T=T, t=t)
 
-        plot_heat_maps(g, traj, occ_list, subplot_titles, stars_grid=stars_grid,
-                zmin=zmin, zmax=zmax)
+        plot_heat_maps(g, traj, occ_list, subplot_titles, title=title,
+                stars_grid=stars_grid, zmin=zmin, zmax=zmax)
 
     _traj_beta_inf_loop(on_loop, g, traj, goal)
 
 
-def simple_traj_inf(traj, stars, N=30, R=-3, title=None, inf_mod=inf_default):
+def simple_traj_inf(traj_or_traj_mode="diag", mode="diag", N=30, R=-3, title=None,
+        inf_mod=inf_default, zmin=-5, zmax=0):
     # We don't care about model_goal. The star we show is always `goal`.
     g, T, start, goal, _ = _occ_starter(N, R, mode)
+    if type(traj_or_traj_mode) is str:
+        traj = _traj_starter(N, start, traj_or_traj_mode)
+    else:
+        traj = traj_or_traj_mode
+
     beta_hat = beta_fixed = 1
 
     occ = inf_mod.occupancy
-    def on_loop(tr, beta_hat, t):
-        occupancies = occ.infer(g, traj, beta=beta_hat, T=T, dest=model_goal)
-        fixed_occupancies = occ.infer(g, traj, beta=beta_fixed, T=T, dest=model_goal)
+    def on_loop(traj, beta_hat, t):
+        occupancies = occ.infer(g, traj, beta=beta_hat, T=T, dest=goal)
+        fixed_occupancies = occ.infer(g, traj, beta=beta_fixed, T=T, dest=goal)
 
         occ_list = [occupancies, fixed_occupancies]
         stars_grid = [goal]
 
         subplot_titles = (
                     "beta_hat={}".format(beta_hat),
-                    "beta={}".format(beta_fixed),
-                    "ground truth beta={}".format(true_beta),
-                    )
-        title = ("Hardmax expected occupancies (for trajectories of length {T}) <br>t={t}"
-            ).format(T=T, t=t)
+                    "beta={}".format(beta_fixed))
 
-        plot_heat_maps(g, tr, occ_list, subplot_titles,
+        _title = title or "Hardmax expected occupancies" + \
+            " (for trajectories of length {T}) <br>t={t}"
+        _title = _title.format(T=T, t=t)
+
+        plot_heat_maps(g, traj, occ_list, subplot_titles, title=_title,
                 stars_grid=stars_grid, zmin=zmin, zmax=zmax)
 
-    _traj_beta_inf_loop(on_loop, g, traj)
+    _traj_beta_inf_loop(on_loop, g, traj, goal)

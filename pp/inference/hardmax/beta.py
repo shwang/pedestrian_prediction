@@ -2,7 +2,7 @@ from __future__ import division
 
 import numpy as np
 
-from ...mdp.hardmax import action_probabilities
+from ...mdp.hardmax import action_probabilities, q_values
 from .. import grad_descent_shared as shared
 
 def compute_score(g, traj, goal, beta, cached_P=None, debug=False):
