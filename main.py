@@ -3,12 +3,9 @@ from __future__ import absolute_import
 import numpy as np
 
 from mdp import GridWorldMDP
-from mdp.softmax import backwards_value_iter, forwards_value_iter
-from inference.softmax.destination import infer_destination
-from inference.softmax.occupancy import *
+from inference.hardmax.occupancy import *
 from util import sum_rewards, display, normalize
-from util.softmax import simulate, sample_action
-from inference.softmax.beta import beta_gradient_ascent, beta_binary_search, compute_score
+from util.hardmax import simulate, sample_action
 from itertools import izip
 
 import plot
@@ -104,44 +101,6 @@ def test_expected_occupancy_start():
 #     for beta in [2,4,6,8]:
 #
 #     value_k
-
-def andrea_occupancies():
-    g = GridWorldMDP(6, 6, {}, default_reward=-9)
-    start = 0
-    goal = g.coor_to_state(5, 5)
-    beta = 1
-    traj = simulate(g, 0, goal, beta=beta)
-    traj = traj[:1]
-    dest_set = {goal}
-
-    print u"Raw trajectory:"
-    print [(g.state_to_coor(s), g.Actions(a)) for s, a in traj]
-    print u"With overlay:"
-    display(g, traj, start, goal, overlay=True)
-    print u"Trajectory only:"
-    display(g, traj, start, goal)
-
-    P = infer_destination(g, traj, beta=beta, dest_set=dest_set)
-    print u"goal probabilities:"
-    print P.reshape(g.rows, g.cols)
-
-    D = infer_occupancies(g, traj, beta=beta, dest_set=dest_set).reshape(g.rows, g.cols)
-    print u"expected occupancies:"
-    print D
-
-#    plot.output_heat_map(g, D, traj, start, {goal}, plot=True)
-
-def smitha_softmax_diverge():
-    g = GridWorldMDP(1, 4, {}, default_reward=-3)
-    init_vals = np.array([0, -3, -6, -9], dtype=float)
-    init_vals = np.array([0, 0, 0, 0], dtype=float)
-    V = backwards_value_iter(g, init_state=0, max_iters=10, verbose=True,
-            beta=10, nachum=True, init_vals=init_vals)
-
-
-# andrea_occupancies()
-smitha_softmax_diverge()
-
 # test_simulate_tiny_dest_set()
 # test_simulate_big_dest_set()
 # test_sample_action(2)

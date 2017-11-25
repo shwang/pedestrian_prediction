@@ -1,6 +1,6 @@
 import numpy as np
 
-from mdp.softmax import backwards_value_iter, forwards_value_iter
+from mdp.hardmax import action_probabilities
 
 def simulate(mdp, initial_state, goal_state, beta=1, path_length=None):
     """
@@ -24,19 +24,15 @@ def simulate(mdp, initial_state, goal_state, beta=1, path_length=None):
     """
     assert beta >= 0, beta
 
-    mdp = mdp.copy()
-    mdp.set_goal(goal_state)
-
-    # V(state->goal)
-    V = forwards_value_iter(mdp, goal_state, beta=beta, max_iters=1000)
+    P = action_probabilities(mdp, goal_state, beta=beta)
 
     if path_length == None:
-        path_length = float(u'inf')
+        path_length = np.inf
 
     traj = []
     s = initial_state
     while len(traj) < path_length:
-        a = sample_action(mdp, s, goal_state, beta=beta, cached_values=V)
+        a = sample_action(mdp, s, goal_state, beta=beta, cached_probs=P)
         traj.append([s, a])
         if a == mdp.Actions.ABSORB:
             break
@@ -44,7 +40,7 @@ def simulate(mdp, initial_state, goal_state, beta=1, path_length=None):
             s = mdp.transition(s, a)
     return traj
 
-def sample_action(mdp, state, goal, beta=1, nachum=False, cached_values=None):
+def sample_action(mdp, state, goal, beta=1, cached_probs=None):
     """
     Choose an action probabilistically, like a softmax agent would.
     Params:
@@ -60,37 +56,30 @@ def sample_action(mdp, state, goal, beta=1, nachum=False, cached_values=None):
     Return:
         a [int]: An action.
     """
-    # TODO(sirspinach): Unit tests, especially for beta edge cases. (low priority)
-    assert beta >= 0, beta
+    assert beta > 0 and beta != np.inf, "beta={} not supported".format(beta)
 
-    # TODO(sirspinach): This uniform choice also chooses ABSORB.
-    #                   Get rid of this possibility for non-goal states.
-    if beta == np.inf:
-        # Use uniform choice; would otherwise result in P = 0/0 = NaN.
-        return np.random.choice(range(mdp.A))
-
-    if cached_values is not None:
-        V = cached_values
-        mdp.set_goal(goal)
+    if cached_probs is not None:
+        P = cached_probs
     else:
-        V = forwards_value_iter(mdp, goal, beta=beta, max_iters=1000)
+        P = action_probabilitilies(mdp, goal, beta=beta)
 
-    P = np.zeros(mdp.A)
-    for a in xrange(mdp.A):
-        s_prime = mdp.transition(state, a)
-        if not nachum:
-            P[a] = mdp.rewards[state, a]/beta + V[s_prime] - V[state]
-        else:
-            P[a] = (mdp.rewards[state, a] + V[s_prime] - V[state])/beta
+    return np.random.choice(range(mdp.A), p=P[state])
 
-    if beta == 0:
-        # Use hardmax choice; would otherwise result in P = inf/inf = NaN.
-        argmax = np.array(np.argmax(P))
-        if argmax.shape == tuple():
-            return argmax
-        else:
-            return np.random.choice(argmax)
+def _main():
+    from util import display
+    from mdp.mdp import GridWorldMDP
 
-    P = np.exp(P)
-    P = P / sum(P)
-    return np.random.choice(range(mdp.A), p=P)
+    init = 0
+    goal = 35
+    default_reward = -2
+    beta = 10
+    g = GridWorldMDP(6, 6, default_reward=default_reward, euclidean_rewards=True)
+
+    traj = simulate(g, 0, goal, beta=beta)
+    print "Testing hardmax.simulate:"
+    print "  * default_reward={}, beta={}".format(default_reward, beta)
+    print "  * traj: {}".format([(g.state_to_coor(s), g.Actions(a)) for s, a in traj])
+    display(g, traj, init, goal, overlay=True)
+
+if __name__ == '__main__':
+    _main()

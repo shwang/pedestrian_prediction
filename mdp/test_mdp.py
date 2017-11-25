@@ -111,7 +111,8 @@ class TestGridWorldMDP(TestCase):
         self.assert_reward(g, 0, 0, Actions.UP_LEFT, ni)
 
     def test_rewards(self):
-        g = GridWorldMDP(3, 3, {(0, 0): -1, (0, 1): 1, (1, 1): 2, (1, 0): 3})
+        g = GridWorldMDP(3, 3, {(0, 0): -1, (0, 1): 1, (1, 1): 2, (1, 0): 3},
+                euclidean_rewards=False)
         self.assert_reward(g, 0, 0, Actions.ABSORB, ni)
         g.set_goal(0)
         self.assert_reward(g, 0, 0, Actions.ABSORB, 0)
@@ -124,7 +125,7 @@ class TestGridWorldMDP(TestCase):
 
     def test_rewards_defaults(self):
         g = GridWorldMDP(3, 3, {(0, 0): -1, (0, 1): 1, (1, 1): 2, (1, 0): 3},
-                default_reward=1.5)
+                default_reward=1.5, euclidean_rewards=False)
         self.assert_reward(g, 0, 0, Actions.ABSORB, ni)
         self.assert_reward(g, 0, 0, Actions.UP, 1)
         self.assert_reward(g, 0, 0, Actions.UP_RIGHT, 2)

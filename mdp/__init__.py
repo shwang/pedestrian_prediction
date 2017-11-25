@@ -1,1 +1,1 @@
-from mdp import GridWorldMDP
+from .mdp import GridWorldMDP

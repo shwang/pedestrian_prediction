@@ -5,12 +5,12 @@ import numpy as np
 from numpy import testing as t
 
 from mdp import GridWorldMDP
-from .occupancy import *
+from .state import *
 
 class TestInferFromStart(TestCase):
 
     def test_base_case(self):
-        mdp = GridWorldMDP(3, 3)
+        mdp = GridWorldMDP(3, 3, euclidean_rewards=True)
         D = np.zeros(9)
         D[0] = 1
         t.assert_allclose(D, infer_from_start(mdp, 0, 3, T=0))

@@ -1,1 +1,2 @@
-from occupancy import *
+import occupancy
+import beta

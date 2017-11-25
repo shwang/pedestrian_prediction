@@ -27,7 +27,7 @@ class TestBackwardsValueIter(TestCase):
         t.assert_allclose(self.bvi(g, 2, max_iters=0), [ni, ni, 0])
 
     def test_easy_no_rewards(self):
-        g = GridWorldMDP(3, 1, {})
+        g = GridWorldMDP(3, 1, default_reward=0)
         t.assert_allclose(self.bvi(g, 0, max_iters=0), [0, ni, ni])
         t.assert_allclose(self.bvi(g, 1, max_iters=0), [ni, 0, ni])
         t.assert_allclose(self.bvi(g, 2, max_iters=0), [ni, ni, 0])

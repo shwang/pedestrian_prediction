@@ -38,8 +38,8 @@ class GridWorldMDP(MDP):
         ABSORB = 8
 
     # TODO: investigate how goal state works nowadays
-    def __init__(self, rows, cols, reward_dict={}, goal_state=None, default_reward=0,
-            euclidean_rewards=False):
+    def __init__(self, rows, cols, reward_dict={}, goal_state=None, default_reward=-5,
+            euclidean_rewards=True):
         """
         An agent in a GridWorldMDP can move between adjacent/diagonal cells.
 
