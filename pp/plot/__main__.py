@@ -1,4 +1,6 @@
 import common
+import common_multi
 
 if __name__ == '__main__':
-    common.simple_traj_inf("diag-fickle2", "diag", R=-1, N=40, save_png=True)
+    common_multi.multidest_traj_inf(
+            "diag-fickle2", "diag+bot", N=40, R=-1, save_png=True)

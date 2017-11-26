@@ -57,8 +57,9 @@ def plot_heat_maps(g, traj_or_start_state, occupancy_list, title_list,
     stars_grid = list(stars_grid)
     try:
         iter(stars_grid[0])
-    except:
+    except TypeError:
         stars_grid = [stars_grid] * len(occupancy_list)
+    assert len(stars_grid) == len(occupancy_list)
 
     for o, stars in zip(occupancy_list, stars_grid):
         o = o.reshape(g.rows, g.cols)
@@ -178,15 +179,18 @@ def simple_ground_truth_inf(mode="diag", N=30, R=-6, true_beta=5,
         zmin=-5, zmax=0, inf_mod=inf_default, title=None, **kwargs):
     g, T, start, goal, model_goal = _occ_starter(N, R, mode)
 
-    traj = simulate(g, start, goal, beta=true_beta)
+    traj = simulate(g, start, goal, beta_or_betas=true_beta)
     beta_fixed = 1
     beta_hat = 1
 
     occ = inf_mod.occupancy
     def on_loop(traj, beta_hat, t):
-        occupancies = occ.infer(g, traj, beta=beta_hat, T=T, dest=model_goal)
-        fixed_occupancies = occ.infer(g, traj, beta=beta_fixed, T=T, dest=model_goal)
-        true_occupancies = occ.infer(g, traj, beta=true_beta, T=T, dest=goal)
+        occupancies = occ.infer(g, traj, beta_or_betas=beta_hat,
+                T=T, dest=model_goal)
+        fixed_occupancies = occ.infer(g, traj, beta_or_betas=beta_fixed,
+                T=T, dest=model_goal)
+        true_occupancies = occ.infer(g, traj, beta_or_betas=true_beta,
+                T=T, dest=goal)
 
         occ_list = [occupancies, fixed_occupancies, true_occupancies]
         stars_grid = [[model_goal], [model_goal], [goal]]
@@ -219,8 +223,10 @@ def simple_traj_inf(traj_or_traj_mode="diag", mode="diag", N=30, R=-6, title=Non
 
     occ = inf_mod.occupancy
     def on_loop(traj, beta_hat, t):
-        occupancies = occ.infer(g, traj, beta=beta_hat, T=T, dest=goal)
-        fixed_occupancies = occ.infer(g, traj, beta=beta_fixed, T=T, dest=goal)
+        occupancies = occ.infer(g, traj, beta_or_betas=beta_hat,
+                T=T, dest=goal)
+        fixed_occupancies = occ.infer(g, traj, beta_or_betas=beta_fixed,
+                T=T, dest=goal)
 
         occ_list = [occupancies, fixed_occupancies]
         stars_grid = [goal]

@@ -11,4 +11,4 @@ import sys
 inf_hardmax = sys.modules['pp.inference.hardmax']
 
 inf_default = inf_hardmax  # default type of inference
-val_default = mdp.hardmax
+val_default = mdp.euclid
