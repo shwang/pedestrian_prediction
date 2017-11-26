@@ -103,6 +103,10 @@ class GridWorldMDP(MDP):
             self.state_rewards[self.coor_to_state(r,c)] = reward
         self.set_goal(goal_state)
 
+        # XXX: This is a hack to enable q_value caching.
+        # And maybe qualifies as technical debt.
+        self.q_cache = {}
+
     def copy(self):
         cp = GridWorldMDP(self.rows, self.cols, {})
         cp.rewards = np.copy(self.rewards)
@@ -160,6 +164,7 @@ class GridWorldMDP(MDP):
         Params:
             goal_state: The new goal. Overrides previous goals.
         """
+        self.goal = goal_state
         self.rewards[:, self.Actions.ABSORB].fill(float(u'-inf'))
         if goal_state != None:
             self.rewards[goal_state, self.Actions.ABSORB] = 0

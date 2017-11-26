@@ -70,7 +70,8 @@ def plot_heat_maps(g, traj_or_start_state, occupancy_list, title_list,
     subplots(subplot_list, title_list, **kwargs)
 
 
-def subplots(subplot_list, title_list, title=None, save_png=False):
+def subplots(subplot_list, title_list, title=None, save_png=False,
+        **kwargs):
     assert len(subplot_list) == len(title_list), (subplot_list, title_list)
     from plotly import tools as tools
 
@@ -85,7 +86,7 @@ def subplots(subplot_list, title_list, title=None, save_png=False):
 
 
 uid_pointer = [100]
-def show_plot(fig, save_png=False):
+def show_plot(fig, save_png=False, delay=2):
     import plotly.offline as py
     uid_pointer[0] += 1
     uid = uid_pointer[0]
@@ -95,6 +96,9 @@ def show_plot(fig, save_png=False):
         py.plot(fig, filename="output/out{}.html".format(uid),
             image='png', image_filename="output/out{}.png".format(uid),
             image_width=1400, image_height=750)
+        if delay is not None:
+            import time
+            time.sleep(delay)
 
 
 def _occ_starter(N, R, mode):
@@ -128,14 +132,30 @@ def _traj_starter(N, init_state, mode):
     elif mode == "horizontal":
         start = g.coor_to_state(0, N//2)
         actions = [A.RIGHT] * (N-1)
+    elif mode == "horizontal_origin":
+        start = 0
+        actions = [A.RIGHT] * (N-1)
     elif mode == "vertical":
         start = g.coor_to_state(N//2, 0)
         actions = [A.UP] * (N-1)
     elif mode == "diag-crawl":
         start = 0
         actions = [A.RIGHT] * (N-1) + [A.UP] * (N-1)
+    elif mode == "diag-fickle":
+        start = 0
+        w = (N-1)//2
+        W = N - 1 - w
+        actions = [A.RIGHT] * w + [A.UP_RIGHT] * W + \
+                [A.UP] * w
+    elif mode == "diag-fickle2":
+        start = 0
+        w = (N-1)//2
+        W = N - 1 - w
+        actions = [A.UP_RIGHT] * W + [A.DOWN_RIGHT] * w \
+                + [A.DOWN]
     else:
         raise Exception("invalid mode: {}".format(mode))
+    actions += [A.ABSORB]
     return build_traj_from_actions(g, start, actions)
 
 
@@ -155,8 +175,8 @@ def _traj_beta_inf_loop(on_loop, g, traj, goal, inf_mod=inf_default, guess=1,
         on_loop(tr, round(beta_hat, 3), i)
 
 
-def simple_ground_truth_inf(mode="diag", N=30, R=-3, true_beta=0.001,
-        zmin=-5, zmax=0, inf_mod=inf_default, title=None):
+def simple_ground_truth_inf(mode="diag", N=30, R=-6, true_beta=5,
+        zmin=-5, zmax=0, inf_mod=inf_default, title=None, **kwargs):
     g, T, start, goal, model_goal = _occ_starter(N, R, mode)
 
     traj = simulate(g, start, goal, beta=true_beta)
@@ -182,13 +202,13 @@ def simple_ground_truth_inf(mode="diag", N=30, R=-3, true_beta=0.001,
         _title = _title.format(T=T, t=t)
 
         plot_heat_maps(g, traj, occ_list, subplot_titles, title=title,
-                stars_grid=stars_grid, zmin=zmin, zmax=zmax)
+                stars_grid=stars_grid, zmin=zmin, zmax=zmax, **kwargs)
 
     _traj_beta_inf_loop(on_loop, g, traj, goal)
 
 
-def simple_traj_inf(traj_or_traj_mode="diag", mode="diag", N=30, R=-3, title=None,
-        inf_mod=inf_default, zmin=-5, zmax=0):
+def simple_traj_inf(traj_or_traj_mode="diag", mode="diag", N=30, R=-6, title=None,
+        inf_mod=inf_default, zmin=-5, zmax=0, **kwargs):
     # We don't care about model_goal. The star we show is always `goal`.
     g, T, start, goal, _ = _occ_starter(N, R, mode)
     if type(traj_or_traj_mode) is str:
@@ -215,6 +235,6 @@ def simple_traj_inf(traj_or_traj_mode="diag", mode="diag", N=30, R=-3, title=Non
         _title = _title.format(T=T, t=t)
 
         plot_heat_maps(g, traj, occ_list, subplot_titles, title=_title,
-                stars_grid=stars_grid, zmin=zmin, zmax=zmax)
+                stars_grid=stars_grid, zmin=zmin, zmax=zmax, **kwargs)
 
     _traj_beta_inf_loop(on_loop, g, traj, goal)

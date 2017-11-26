@@ -21,13 +21,17 @@ def compute_score(g, traj, goal, beta, cached_P=None, debug=False):
 
 def compute_grad(g, traj, goal, beta, debug=False):
     assert len(traj) > 0, traj
-    Q = q_values(g, goal, beta=beta)
+    Q = q_values(g, goal)
+    # Prevent -inf * 0 in the multiply(P,Q) operation.
+    # REQUIRES NUMPY VERSION 1.13
+    np.nan_to_num(Q, copy=False)
     P = action_probabilities(g, goal, beta=beta, q_cached=Q)
     assert Q.shape == P.shape
 
     q_sum = 0
     ex_q = np.multiply(P, Q)
     ex_q_sum = 0
+
     for s, a in traj:
         q_sum += Q[s, a]
         ex_q_sum += np.sum(ex_q[s])
