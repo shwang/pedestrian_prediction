@@ -2,7 +2,6 @@ import numpy as np
 
 from ..mdp import GridWorldMDP
 from ..inference.softmax.destination import infer_destination
-from ..inference import hardmax
 
 from ..util import sum_rewards, display, build_traj_from_actions
 from ..util.hardmax import simulate, sample_action
@@ -197,9 +196,9 @@ def simple_ground_truth_inf(mode="diag", N=30, R=-6, true_beta=5,
                     "beta={}".format(beta_fixed),
                     "ground truth beta={}".format(true_beta),
                     )
-        _title = title or "Hardmax expected occupancies" + \
+        _title = title or "Euclid expected occupancies R={R}" + \
                 " (for trajectories of length {T}) <br>t={t}"
-        _title = _title.format(T=T, t=t)
+        _title = _title.format(T=T, t=t, R=R)
 
         plot_heat_maps(g, traj, occ_list, subplot_titles, title=title,
                 stars_grid=stars_grid, zmin=zmin, zmax=zmax, **kwargs)
@@ -230,9 +229,9 @@ def simple_traj_inf(traj_or_traj_mode="diag", mode="diag", N=30, R=-6, title=Non
                     "beta_hat={}".format(beta_hat),
                     "beta={}".format(beta_fixed))
 
-        _title = title or "Hardmax expected occupancies" + \
+        _title = title or "hardmax expected occupancies R={R}" + \
             " (for trajectories of length {T}) <br>t={t}"
-        _title = _title.format(T=T, t=t)
+        _title = _title.format(T=T, t=t, R=R)
 
         plot_heat_maps(g, traj, occ_list, subplot_titles, title=_title,
                 stars_grid=stars_grid, zmin=zmin, zmax=zmax, **kwargs)

@@ -2,10 +2,10 @@ from __future__ import division
 
 import numpy as np
 
-from ...mdp.hardmax import action_probabilities
+from ...parameters import val_default
 
 def infer_from_start(mdp, init_state, dest, T=None, verbose=False, beta=1,
-        cached_action_prob=None):
+        cached_action_prob=None, val_mod=val_default):
     if T is None:
         T = mdp.rows + mdp.cols
 
@@ -13,7 +13,7 @@ def infer_from_start(mdp, init_state, dest, T=None, verbose=False, beta=1,
         action_prob = cached_action_prob
         assert action_prob.shape == (mdp.S, mdp.A)
     else:
-        action_prob = action_probabilities(mdp, dest, beta=beta)
+        action_prob = val_mod.action_probabilities(mdp, dest, beta=beta)
 
     res = np.zeros([T+1, mdp.S])
     res[0][init_state] = 1
@@ -31,14 +31,11 @@ def infer_from_start(mdp, init_state, dest, T=None, verbose=False, beta=1,
     D[dest] = max(1, D[dest])  # Don't want this to grow absurdly large.
     return D
 
-def infer(mdp, traj, dest, T=None, verbose=False, beta=1,
-        cached_action_prob=None):
-
+def infer(mdp, traj, dest, **kwargs):
     assert len(traj) > 0
     s_a = traj[0][0]
     s_b = mdp.transition(*traj[-1])
-    return infer_from_start(mdp, s_b, dest, T=T, verbose=verbose, beta=beta,
-            cached_action_prob=cached_action_prob)
+    return infer_from_start(mdp, s_b, dest, **kwargs)
 
 def _main():
     from mdp import GridWorldMDP

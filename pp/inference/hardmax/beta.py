@@ -2,13 +2,14 @@ from __future__ import division
 
 import numpy as np
 
-from ...mdp.hardmax import action_probabilities, q_values
 from .. import grad_descent_shared as shared
+from ...parameters import val_default
 
-def compute_score(g, traj, goal, beta, cached_P=None, debug=False):
+def compute_score(g, traj, goal, beta, cached_P=None, debug=False,
+        val_mod=val_default):
     assert len(traj) > 0, traj
     if cached_P is None:
-        P = action_probabilities(g, goal, beta=beta)
+        P = val_mod.action_probabilities(g, goal, beta=beta)
     else:
         P = cached_P
 
@@ -19,13 +20,13 @@ def compute_score(g, traj, goal, beta, cached_P=None, debug=False):
     log_score = np.log(score, out=score)
     return np.sum(log_score)
 
-def compute_grad(g, traj, goal, beta, debug=False):
+def compute_grad(g, traj, goal, beta, debug=False, val_mod=val_default):
     assert len(traj) > 0, traj
-    Q = q_values(g, goal)
+    Q = val_mod.q_values(g, goal)
     # Prevent -inf * 0 in the multiply(P,Q) operation.
     # REQUIRES NUMPY VERSION 1.13
     np.nan_to_num(Q, copy=False)
-    P = action_probabilities(g, goal, beta=beta, q_cached=Q)
+    P = val_mod.action_probabilities(g, goal, beta=beta, q_cached=Q)
     assert Q.shape == P.shape
 
     q_sum = 0

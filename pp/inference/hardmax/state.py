@@ -2,10 +2,10 @@ from __future__ import division
 
 import numpy as np
 
-from ...mdp.hardmax import action_probabilities
+from ...parameters import val_default
 
 def infer_from_start(mdp, init_state, dest, T, verbose=False, beta=1,
-        cached_action_prob=None, all_steps=True):
+        cached_action_prob=None, all_steps=True, val_mod=val_default):
     """
     Params:
         mdp [mdp.GridWorldMDP] -- The MDP in which the agent resides.
@@ -49,7 +49,7 @@ def infer_from_start(mdp, init_state, dest, T, verbose=False, beta=1,
         #         continue
         #     action_prob = {}
         #     action_prob[dest] = action_probabilities(mdp, dest)
-        action_prob = action_probabilities(mdp, dest, beta=beta)
+        action_prob = val_mod.action_probabilities(mdp, dest, beta=beta)
 
     res = np.zeros([T+1, mdp.S])
     res[0][init_state] = 1
