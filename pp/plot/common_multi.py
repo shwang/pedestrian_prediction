@@ -7,15 +7,14 @@ from ..parameters import inf_default
 from .common import *
 
 def _occ_starter(N, R, mode):
-    """
-    modes: diag, diag-top, vertical, diag-but-top
-    """
     g = GridWorldMDP(N, N, {}, default_reward=R)
     T = N+N
 
     diag = g.S - 1
     diag_top = g.coor_to_state(N//2, N-1)
     bot = g.coor_to_state(N-1, 0)
+    top = g.coor_to_state(0, N-1)
+    mid = g.coor_to_state(N//2, N//2)
 
     if mode == "diag+bot":
         start = 0
@@ -23,6 +22,15 @@ def _occ_starter(N, R, mode):
     elif mode == "diag+diag_top":
         start = 0
         dest_list = [diag, diag_top]
+    elif mode == "nondiag":
+        start = 0
+        dest_list = [bot, top]
+    elif mode == "diag+mid":
+        start = 0
+        dest_list = [mid, diag]
+    elif mode == "tri":
+        start = 0
+        dest_list = [top, bot, diag]
     else:
         raise Exception("invalid mode: {}".format(mode))
 
