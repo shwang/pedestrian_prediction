@@ -54,3 +54,36 @@ def action_probabilities(mdp, goal_state, q_values, beta=1, q_cached=None):
 
     np.exp(Q, out=Q)
     return normalize(Q, norm='l1', copy=False)
+
+
+def trajectory_probability(mdp, goal_state, traj, action_probabilities,
+        beta=1, cached_act_probs=None):
+    """
+    Calculate the product of the probabilities of each
+    state-action pair in this trajectory given an mdp,
+    a goal_state, and beta.
+
+    Params:
+        mdp [GridWorldMDP]: The MDP.
+        goal_state [int]: The goal state. At the goal state, the agent
+            always chooses the ABSORB action at no cost.
+        traj [list of (int, int)]: A list of state-action pairs. If this
+            is an empty list, return traj_prob=1.
+        beta [float] (optional): Irrationality constant.
+        cached_act_probs [ndarray] (optional): Cached results of
+            action_probabilities. Mainly for testing purposes.
+    Return:
+        traj_prob [float].
+    """
+    if len(traj) == 0:
+        return 1
+
+    if cached_act_probs is None:
+        P = action_probabilities(mdp, goal_state, beta=beta)
+    else:
+        P = cached_act_probs
+
+    traj_prob = 1
+    for s, a in traj:
+        traj_prob *= P[s, a]
+    return traj_prob

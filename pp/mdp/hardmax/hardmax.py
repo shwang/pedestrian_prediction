@@ -5,6 +5,8 @@ import Queue
 from ..softact_shared import q_values as _q_values
 from ..softact_shared import action_probabilities \
         as _action_probabilities
+from ..softact_shared import trajectory_probability \
+        as _trajectory_probability
 
 def forwards_value_iter(mdp, goal_state, *args, **kwargs):
     kwargs["forwards"] = True
@@ -75,33 +77,6 @@ def q_values(mdp, goal_state):
 def action_probabilities(mdp, goal_state, **kwargs):
     return _action_probabilities(mdp, goal_state, q_values, **kwargs)
 
-def trajectory_probability(mdp, goal_state, traj, beta=1, cached_act_probs=None):
-    """
-    Calculate the product of the probabilities of each
-    state-action pair in this trajectory given an mdp,
-    a goal_state, and beta.
-
-    Params:
-        mdp [GridWorldMDP]: The MDP.
-        goal_state [int]: The goal state. At the goal state, the agent
-            always chooses the ABSORB action at no cost.
-        traj [list of (int, int)]: A list of state-action pairs. If this
-            is an empty list, return traj_prob=1.
-        beta [float] (optional): Irrationality constant.
-        cached_act_probs [ndarray] (optional): Cached results of
-            action_probabilities. Mainly for testing purposes.
-    Return:
-        traj_prob [float].
-    """
-    if len(traj) == 0:
-        return 1
-
-    if cached_act_probs is None:
-        P = action_probabilities(mdp, goal_state, beta=beta)
-    else:
-        P = cached_act_probs
-
-    traj_prob = 1
-    for s, a in traj:
-        traj_prob *= P[s, a]
-    return traj_prob
+def trajectory_probability(*args, **kwargs):
+    return _trajectory_probability(*args,
+            action_probabilities=action_probabilities, **kwargs)

@@ -2,10 +2,10 @@ from __future__ import division
 
 import numpy as np
 
-from ...mdp.hardmax import trajectory_probability
+from ...parameters import val_default
 from .beta import binary_search
 
-def infer(g, traj, dest_list, beta_guesses=None,
+def infer(g, traj, dest_list, beta_guesses=None, val_mod=val_default,
         mk_bin_search=None, mk_traj_prob=None, **kwargs):
     """
     For each destination, computes the beta_hat that maximizes
@@ -39,7 +39,7 @@ def infer(g, traj, dest_list, beta_guesses=None,
     dest_probs = np.zeros(num)
 
     _binary_search = mk_bin_search or binary_search
-    _trajectory_probability = mk_traj_prob or trajectory_probability
+    _trajectory_probability = mk_traj_prob or val_mod.trajectory_probability
 
     if beta_guesses is None:
         beta_guesses = [1] * num
@@ -47,7 +47,12 @@ def infer(g, traj, dest_list, beta_guesses=None,
     for i, dest in enumerate(dest_list):
         guess = beta_guesses[i]
         betas[i] = _binary_search(g, traj, dest, guess=guess, **kwargs)
-        dest_probs[i] = _trajectory_probability(g, dest, traj, betas[i])
+        dest_probs[i] = _trajectory_probability(g, dest, traj,
+                beta=betas[i])
 
+    # TODO: fix this ugly hack for guaranteeing dest_prob[0] = 1
+    # even when raw traj_prob = 0.
+    if num == 1:
+        dest_probs[0] = 1
     np.divide(dest_probs, sum(dest_probs), out=dest_probs)
     return dest_probs, betas
