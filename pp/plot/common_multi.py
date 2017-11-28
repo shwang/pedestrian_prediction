@@ -2,6 +2,7 @@ import numpy as np
 
 from ..mdp import GridWorldMDP
 from ..util import sum_rewards, display, build_traj_from_actions
+from ..util.args import unpack_opt_list
 from ..parameters import inf_default
 
 from .common import *
@@ -69,7 +70,6 @@ def _traj_starter(N, init_state, mode):
                 + [A.DOWN]
     else:
         raise Exception("invalid mode: {}".format(mode))
-    actions += [A.ABSORB]
     return build_traj_from_actions(g, start, actions)
 
 
@@ -77,9 +77,8 @@ def _traj_beta_inf_loop(on_loop, g, traj, dest_list, inf_mod=inf_default,
         beta_guesses=None, min_beta=0.01, max_beta=100, traj_len=None,
         verbose=True):
     traj_len = traj_len or np.inf
-    # This choice of range implicitly ignores the final action (ABSORB)
-    # TODO: let's change the semantics -- don't ignore the final action.
-    for i in xrange(len(traj)):
+
+    for i in xrange(len(traj) + 1):
         if i == 0:
             start = traj[0][0]
             tr = [(start, Actions.ABSORB)]
@@ -111,7 +110,6 @@ def multidest_traj_inf(traj_or_traj_mode="diag", mode="diag", N=30, R=-6,
         **kwargs):
     g, T, start, dest_list = _occ_starter(N, R, mode)
 
-    # TODO: Use util.unpack once that is available.
     if type(traj_or_traj_mode) is str:
         traj = _traj_starter(N, start, traj_or_traj_mode)
     else:

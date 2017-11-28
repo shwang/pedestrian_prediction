@@ -70,8 +70,8 @@ def infer_destination(mdp, traj, beta=1, prior=None, dest_set=None,
         for d in impossible_set:
             prior[d] = 0
 
-    # TODO: Check for ABSORB. A state where ABSORB action was taken is automatically
-    # the goal state.
+    # XXX: Check for ABSORB. A state where ABSORB action was taken is automatically
+    # the goal state.  [low-priority because softmax is out of fashion]
 
     traj_reward = sum_rewards(mdp, traj)
 
@@ -96,7 +96,7 @@ def infer_destination(mdp, traj, beta=1, prior=None, dest_set=None,
     else:
         V_b = V_b_cached
 
-    # TODO: correct numerical errors due to large magnitude before exp
+    # XXX: correct numerical errors due to large magnitude before exp
     # updatable = (prior > 0)
     # P_dest = traj_reward + V_b - V_a
     P_dest = np.zeros(mdp.S)

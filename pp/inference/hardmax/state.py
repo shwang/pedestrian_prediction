@@ -8,7 +8,7 @@ def infer_from_start(mdp, init_state, dest, T, verbose=False, beta=1,
         cached_action_prob=None, all_steps=True, val_mod=val_default):
     """
     Params:
-        mdp [mdp.GridWorldMDP] -- The MDP in which the agent resides.
+        mdp [GridWorldMDP] -- The MDP in which the agent resides.
         init_state [int] -- The agent's current state.
         dest [int] -- The agent's goal.
         T [int] -- Make an inference for state probabilities at this many
@@ -20,11 +20,10 @@ def infer_from_start(mdp, init_state, dest, T, verbose=False, beta=1,
             probabilities up to T in a 2D array.
     Returns:
         If `all_steps` is True, then returns all state probabilities for
-        timesteps 0,1,...,T in a 2D array. (with dimension (T+1) x S, where
-        S is the number of states)
+        timesteps 0,1,...,T in a 2D array. (with dimension (T+1) x mdp.S)
 
         Otherwise, returns a 1D array with the state probabilities for the
-        Tth timestep. (with dimension S, where S is the number of states).
+        Tth timestep. (with dimension mdp.S)
 
 
     [The commented out code is scaffolding for future support of multiple
@@ -56,7 +55,6 @@ def infer_from_start(mdp, init_state, dest, T, verbose=False, beta=1,
     for t in range(1, T+1):
         P = res[t-1]
         P_prime = res[t]
-        # import pdb; pdb.set_trace()
         # TODO: loop over dest
         for s in range(mdp.S):
             if P[s] == 0:

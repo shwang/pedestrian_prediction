@@ -155,14 +155,13 @@ def _traj_starter(N, init_state, mode):
                 + [A.DOWN]
     else:
         raise Exception("invalid mode: {}".format(mode))
-    actions += [A.ABSORB]
     return build_traj_from_actions(g, start, actions)
 
 
 def _traj_beta_inf_loop(on_loop, g, traj, goal, inf_mod=inf_default, guess=1,
         traj_len=None, min_beta=0.01, max_beta=100, verbose=True):
     traj_len = traj_len or np.inf
-    for i in xrange(len(traj)):
+    for i in xrange(len(traj) + 1):
         if i == 0:
             start = traj[0][0]
             tr = [(start, Actions.ABSORB)]

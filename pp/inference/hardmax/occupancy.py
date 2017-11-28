@@ -4,22 +4,7 @@ import numpy as np
 import destination
 
 from ...parameters import val_default
-
-# TODO: Figure out the imports nonsense and move this to util.
-#
-# don't use from notation. Maybe consider using sys.modules.
-def unpack_opt_list(iter_or_scalar, require_not_empty=True, extend_to=1):
-    """
-    Converts the iter to a list, or the scalar to a length-1 list.
-    """
-    try:
-        iter(iter_or_scalar)
-        res = list(iter_or_scalar)
-        if require_not_empty:
-            assert len(res) > 0, res
-    except TypeError:
-        res = [iter_or_scalar] * extend_to
-    return res
+from ...util.args import unpack_opt_list
 
 
 def _infer(g, init_state, dest, T, beta=1, action_prob=None, val_mod=val_default):
@@ -46,48 +31,46 @@ def infer_from_start(g, init_state, dest_or_dests, dest_probs=None,
         T=None, verbose=False, beta_or_betas=1, cached_action_probs=None,
         verbose_return=False):
     """
-    If verbose_return: returns D, D_dest_list, dest_probs, beta_list
+    If verbose_return: returns D, D_dests, dest_probs, betas
     else: returns D
     """
     if T is None:
         T = g.rows + g.cols
 
-    # TODO: use some variable instead of len(dest_list)
-    # Convert scalars arguments into single-element lists, or keep list.
-    dest_list = unpack_opt_list(dest_or_dests)
-    beta_list = unpack_opt_list(beta_or_betas, extend_to=len(dest_list))
-    beta_list = np.array(beta_list)
-    assert len(beta_list) == len(dest_list), beta_list
+    dests = unpack_opt_list(dest_or_dests)
+    L = len(dests)
 
-    # Unpack cached_action_prob, if applicable.
+    betas = np.array(unpack_opt_list(beta_or_betas, extend_to=L))
+    assert len(betas) == L, betas
+
+    # Unpack cached_action_probs, if applicable.
     if cached_action_probs is not None:
-        act_prob_list = unpack_opt_list(cached_action_probs)
+        act_probs = unpack_opt_list(cached_action_probs)
     else:
-        act_prob_list = [None] * len(dest_list)
-    assert len(act_prob_list) == len(dest_list), act_prob_list
+        act_probs = [None] * L
+    assert len(act_probs) == L, act_prob_list
 
     # Unpack dest_prob
-    # TODO: incongrous dest_prob name
     if dest_probs is None:
-        dest_probs = [1] * len(dest_list)
-    assert len(dest_probs) == len(dest_list)
+        dest_probs = [1] * L
+    assert len(dest_probs) == L
     dest_probs = np.array(dest_probs) / sum(dest_probs)
 
     # Take the weighted sum of the occupancy given each individual destination.
     D = np.zeros(g.S)
-    D_dest_list = []  # Only for verbose_return
-    # TODO: just use a big zip(..)
-    for i, dest in enumerate(dest_list):
-        D_dest = _infer(g, init_state, dest, T, beta=beta_list[i],
-                action_prob=act_prob_list[i])
-        D_dest_list.append(np.copy(D_dest))
-        np.multiply(D_dest, dest_probs[i], out=D_dest)
+    D_dests = []  # Only for verbose_return
+    for dest, beta, act_prob, dest_prob in zip(
+            dests, betas, act_probs, dest_probs):
+        D_dest = _infer(g, init_state, dest, T, beta=beta,
+                action_prob=act_prob)
+        D_dests.append(np.copy(D_dest))
+        np.multiply(D_dest, dest_prob, out=D_dest)
         np.add(D, D_dest, out=D)
 
     if not verbose_return:
         return D
     else:
-        return D, D_dest_list, dest_probs, beta_list
+        return D, D_dests, dest_probs, betas
 
 
 # TODO: bin_search_opt is sketchy

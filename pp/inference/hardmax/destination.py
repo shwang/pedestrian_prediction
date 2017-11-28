@@ -5,7 +5,7 @@ import numpy as np
 from ...parameters import val_default
 from .beta import binary_search
 
-def infer(g, traj, dest_list, beta_guesses=None, val_mod=val_default,
+def infer(g, traj, dests, beta_guesses=None, val_mod=val_default,
         mk_bin_search=None, mk_traj_prob=None, **kwargs):
     """
     For each destination, computes the beta_hat that maximizes
@@ -18,7 +18,7 @@ def infer(g, traj, dest_list, beta_guesses=None, val_mod=val_default,
         - g [GridWorldMDP]: The MDP.
         - traj [list of (int, int)]: Trajectory represented by
             state-action pairs.
-        - dest_list [listlike of int]: The possible destination
+        - dests [listlike of int]: The possible destination
             states. Behavior is undefined if there are duplicate
             or invalid destination states.
         - beta_guesses [listlike of float] (optional): For binary search.
@@ -34,7 +34,7 @@ def infer(g, traj, dest_list, beta_guesses=None, val_mod=val_default,
     """
     assert len(traj) > 0
 
-    num = len(dest_list)
+    num = len(dests)
     betas = np.zeros(num)
     dest_probs = np.zeros(num)
 
@@ -44,13 +44,13 @@ def infer(g, traj, dest_list, beta_guesses=None, val_mod=val_default,
     if beta_guesses is None:
         beta_guesses = [1] * num
 
-    for i, dest in enumerate(dest_list):
+    for i, dest in enumerate(dests):
         guess = beta_guesses[i]
         betas[i] = _binary_search(g, traj, dest, guess=guess, **kwargs)
         dest_probs[i] = _trajectory_probability(g, dest, traj,
                 beta=betas[i])
 
-    # TODO: fix this ugly hack for guaranteeing dest_prob[0] = 1
+    # XXX: fix this ugly hack for guaranteeing dest_prob[0] = 1
     # even when raw traj_prob = 0.
     if num == 1:
         dest_probs[0] = 1

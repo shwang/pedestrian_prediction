@@ -32,7 +32,6 @@ def _value_iter(mdp, s, forwards, beta=1, verbose=False):
         s [int]: The init_state or the goal_state, depending on the
             value of forwards. In either case, V[s] = 0.
         forwards [bool]: Described in the function summary.
-        lazy_s [bool]: TODO
 
     Returns:
         V [np.ndarray]: An `mdp.S`-length vector, where the ith entry is
