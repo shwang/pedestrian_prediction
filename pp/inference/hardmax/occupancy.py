@@ -77,13 +77,14 @@ def infer_from_start(g, init_state, dest_or_dests, dest_probs=None,
 def infer(g, traj, dest_or_dests, T=None, verbose=False, beta_or_betas=None,
         auto_beta=True, beta_guesses=None, bin_search_opt={}, **kwargs):
     """
-    If auto_beta, then use MLE beta. Otherwise, use given betas (beta_or_betas).
+    If beta_or_betas not provided, then use MLE beta.
     """
     assert len(traj) > 0, traj
     s_b = g.transition(*traj[-1])
     dest_list = unpack_opt_list(dest_or_dests)
-    if not auto_beta:
+    if beta_or_betas is not None:
         betas = unpack_opt_list(beta_or_betas)
+        dest_probs = None
     else:
         dest_probs, betas = destination.infer(g, traj, dest_list,
                 beta_guesses=beta_guesses, **bin_search_opt)
