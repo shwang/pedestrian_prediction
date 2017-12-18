@@ -66,12 +66,12 @@ def plot_heat_maps(g, traj_or_trajs, occupancy_list, title_list,
 
     try:
         # If iterable at two-deep, then this is a list of traj.
-        iter(traj_or_trajs[0])
+        iter(traj_or_trajs[0][0])
         trajs = traj_or_trajs
     except TypeError:
         # Assume this is a single trajectory.
         trajs = [traj_or_trajs] * L
-    assert len(trajs) == L, trajs
+    assert len(trajs) == L, (trajs, L)
 
     for o, stars, traj in zip(occupancy_list, stars_grid, trajs):
         o = o.reshape(g.rows, g.cols)
@@ -98,7 +98,7 @@ def subplots(subplot_list, title_list, title=None, save_png=False,
 
 
 uid_pointer = [100]
-def show_plot(fig, save_png=False, delay=2):
+def show_plot(fig, save_png=False, delay=3.2):
     import plotly.offline as py
     uid_pointer[0] += 1
     uid = uid_pointer[0]

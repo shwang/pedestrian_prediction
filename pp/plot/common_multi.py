@@ -16,21 +16,22 @@ def _occ_starter(N, R, mode):
     bot = g.coor_to_state(N-1, 0)
     top = g.coor_to_state(0, N-1)
     mid = g.coor_to_state(N//2, N//2)
+    one = g.coor_to_state(1,1)
 
     if mode == "diag+bot":
-        start = 0
+        start = one
         dest_list = [diag, bot]
     elif mode == "diag+diag_top":
-        start = 0
+        start = one
         dest_list = [diag, diag_top]
     elif mode == "nondiag":
-        start = 0
+        start = one
         dest_list = [bot, top]
     elif mode == "diag+mid":
-        start = 0
+        start = one
         dest_list = [mid, diag]
     elif mode == "tri":
-        start = 0
+        start = one
         dest_list = [top, bot, diag]
     else:
         raise Exception("invalid mode: {}".format(mode))
@@ -41,32 +42,33 @@ def _occ_starter(N, R, mode):
 def _traj_starter(N, init_state, mode):
     A = Actions
     g = GridWorldMDP(N, N)
+    one = g.coor_to_state(1,1)
     if mode == "diag":
-        start = 0
-        actions = [A.UP_RIGHT] * (N-1)
+        start = one
+        actions = [A.UP_RIGHT] * (N-2)
     elif mode == "horizontal":
         start = g.coor_to_state(0, N//2)
-        actions = [A.RIGHT] * (N-1)
+        actions = [A.RIGHT] * (N-2)
     elif mode == "horizontal_origin":
-        start = 0
-        actions = [A.RIGHT] * (N-1)
+        start = one
+        actions = [A.RIGHT] * (N-2)
     elif mode == "vertical":
         start = g.coor_to_state(N//2, 0)
-        actions = [A.UP] * (N-1)
+        actions = [A.UP] * (N-2)
     elif mode == "diag-crawl":
-        start = 0
-        actions = [A.RIGHT] * (N-1) + [A.UP] * (N-1)
+        start = one
+        actions = [A.RIGHT] * (N-2) + [A.UP] * (N-2)
     elif mode == "diag-fickle":
-        start = 0
+        start = one
         w = (N-1)//2
         W = N - 1 - w
-        actions = [A.RIGHT] * w + [A.UP_RIGHT] * W + \
+        actions = [A.RIGHT] * w + [A.UP_RIGHT] * (W-1) + \
                 [A.UP] * w
     elif mode == "diag-fickle2":
-        start = 0
+        start = one
         w = (N-1)//2
         W = N - 1 - w
-        actions = [A.UP_RIGHT] * W + [A.DOWN_RIGHT] * w \
+        actions = [A.UP_RIGHT] * (W-1) + [A.DOWN_RIGHT] * w \
                 + [A.DOWN]
     else:
         raise Exception("invalid mode: {}".format(mode))
@@ -74,8 +76,8 @@ def _traj_starter(N, init_state, mode):
 
 
 def _traj_beta_inf_loop(on_loop, g, traj, dest_list, inf_mod=inf_default,
-        beta_guesses=None, min_beta=0.01, max_beta=100, traj_len=None,
-        verbose=True):
+        hmm=False, hmm_opts={}, beta_guesses=None, min_beta=0.01, max_beta=100,
+        traj_len=None, verbose=True):
     traj_len = traj_len or np.inf
 
     for i in xrange(len(traj) + 1):
@@ -92,7 +94,8 @@ def _traj_beta_inf_loop(on_loop, g, traj, dest_list, inf_mod=inf_default,
             opt=dict(min_beta=min_beta, max_beta=max_beta)
             infer = inf_mod.occupancy.infer
             D, D_dest_list, dest_probs, betas = infer(g, tr, dest_list,
-                    beta_guesses=beta_guesses, bin_search_opt=opt,
+                    beta_guesses=beta_guesses, bin_search_opts=opt,
+                    hmm=hmm, hmm_opts=hmm_opts,
                     verbose=verbose, verbose_return=True)
             beta_guesses = np.copy(betas)
             if verbose:
@@ -105,16 +108,12 @@ def _traj_beta_inf_loop(on_loop, g, traj, dest_list, inf_mod=inf_default,
         on_loop(tr, D, D_dest_list, dest_probs, betas, i)
 
 
-def multidest_traj_inf(traj_or_traj_mode="diag", mode="diag", N=30, R=-6,
+def multidest_traj_inf(traj_mode="diag", mode="diag", N=30, R=-1,
+        epsilon=0.05,
         title=None, inf_mod=inf_default, zmin=-5, zmax=0, traj_len=None,
-        **kwargs):
+        hmm=False, **kwargs):
     g, T, start, dest_list = _occ_starter(N, R, mode)
-
-    if type(traj_or_traj_mode) is str:
-        traj = _traj_starter(N, start, traj_or_traj_mode)
-    else:
-        traj = traj_or_traj_mode
-
+    traj = _traj_starter(N, start, traj_mode)
     beta_hat = beta_fixed = 1
 
     occ = inf_mod.occupancy
@@ -123,8 +122,7 @@ def multidest_traj_inf(traj_or_traj_mode="diag", mode="diag", N=30, R=-6,
         subplot_titles = []
         stars_grid = []
 
-        for dest, dest_prob, beta_hat in zip(
-                dest_list, dest_probs, betas):
+        for dest, dest_prob, beta_hat in zip(dest_list, dest_probs, betas):
             subplot_titles.append("dest_prob={}, beta_hat={}".format(
                 dest_prob, beta_hat))
             stars_grid.append([dest])
@@ -135,9 +133,10 @@ def multidest_traj_inf(traj_or_traj_mode="diag", mode="diag", N=30, R=-6,
         stars_grid.append(dest_list)
 
         _title = title or "euclid expected occupancies t={t} R={R}"
-        _title = _title.format(T=T, t=t, R=R)
+        _title = _title.format(T=T, t=t, R=R, traj=traj_mode, epsilon=epsilon)
 
         plot_heat_maps(g, traj, occ_list, subplot_titles, title=_title,
                 stars_grid=stars_grid, zmin=zmin, zmax=zmax, **kwargs)
 
-    _traj_beta_inf_loop(on_loop, g, traj, dest_list, traj_len=traj_len)
+    _traj_beta_inf_loop(on_loop, g, traj, dest_list, traj_len=traj_len,
+            hmm=hmm, hmm_opts=dict(epsilon=epsilon))

@@ -33,6 +33,15 @@ def infer_from_start(g, init_state, dest_or_dests, dest_probs=None,
     """
     If verbose_return: returns D, D_dests, dest_probs, betas
     else: returns D
+
+    D_dests is a list of 2D arrays. The ith array is the expected occupancy
+        given that the true destination is the ith destination.
+    D, a 2D array, is a weighted sum of the occupancies in D_dests. The weight
+        for each
+        occupancy grid is equal to the posterior probability of the associated
+        destination.
+    dest_probs, a 1D array, is the posterior probability of each destination.
+    betas is a 1D array containing the MLE beta for each destination.
     """
     if T is None:
         T = g.rows + g.cols
@@ -73,9 +82,10 @@ def infer_from_start(g, init_state, dest_or_dests, dest_probs=None,
         return D, D_dests, dest_probs, betas
 
 
-# TODO: bin_search_opt is sketchy
 def infer(g, traj, dest_or_dests, T=None, verbose=False, beta_or_betas=None,
-        auto_beta=True, beta_guesses=None, bin_search_opt={}, **kwargs):
+        hmm=False, hmm_opts={},
+        auto_beta=True, beta_guesses=None, bin_search_opts={},
+        **kwargs):
     """
     If beta_or_betas not provided, then use MLE beta.
     """
@@ -86,8 +96,14 @@ def infer(g, traj, dest_or_dests, T=None, verbose=False, beta_or_betas=None,
         betas = unpack_opt_list(beta_or_betas)
         dest_probs = None
     else:
-        dest_probs, betas = destination.infer(g, traj, dest_list,
-                beta_guesses=beta_guesses, **bin_search_opt)
+        if hmm:
+            dest_probs, betas = destination.hmm_infer(g, traj, dest_list,
+                    beta_guesses=beta_guesses, bin_search_opts=bin_search_opts,
+                    **hmm_opts)
+        else:
+            dest_probs, betas = destination.infer(g, traj, dest_list,
+                    beta_guesses=beta_guesses,
+                    bin_search_opts=bin_search_opts)
 
     return infer_from_start(g, s_b, dest_list, dest_probs=dest_probs,
             T=T, verbose=verbose, beta_or_betas=betas, **kwargs)
