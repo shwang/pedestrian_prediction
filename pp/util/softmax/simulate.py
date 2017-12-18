@@ -60,11 +60,8 @@ def sample_action(mdp, state, goal, beta=1, nachum=False, cached_values=None):
     Return:
         a [int]: An action.
     """
-    # TODO(sirspinach): Unit tests, especially for beta edge cases. (low priority)
     assert beta >= 0, beta
 
-    # TODO(sirspinach): This uniform choice also chooses ABSORB.
-    #                   Get rid of this possibility for non-goal states.
     if beta == np.inf:
         # Use uniform choice; would otherwise result in P = 0/0 = NaN.
         return np.random.choice(range(mdp.A))

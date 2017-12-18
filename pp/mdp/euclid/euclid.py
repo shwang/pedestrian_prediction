@@ -4,8 +4,10 @@ import numpy as np
 from ..softact_shared import q_values as _q_values
 from ..softact_shared import action_probabilities \
         as _action_probabilities
+from ..softact_shared import trajectory_probability \
+        as _trajectory_probability
 
-def _value(g, s, beta=1, verbose=False):
+def _value(g, s, verbose=False):
     """
     Estimate values as negative euclidean distance from s.
     Ignores rewards while calculating values! Rewards are only considered
@@ -14,9 +16,6 @@ def _value(g, s, beta=1, verbose=False):
     Params:
         mdp [GridWorldMDP]: The MDP.
         s [int]: The state from which euclidean distances are calculated.
-        beta [float]: The irrationality constant. This value is ignored(!),
-            and is left here for compatibility purposes.
-            TODO: really necessary?
 
     Returns:
         V [np.ndarray]: An `mdp.S`-length vector, where the ith entry is
@@ -42,3 +41,7 @@ def q_values(g, goal_state):
 
 def action_probabilities(g, goal_state, **kwargs):
     return _action_probabilities(g, goal_state, q_values, **kwargs)
+
+def trajectory_probability(*args, **kwargs):
+    return _trajectory_probability(*args,
+            action_probabilities=action_probabilities, **kwargs)

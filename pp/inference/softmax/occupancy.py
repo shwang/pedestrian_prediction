@@ -207,8 +207,10 @@ def infer_occupancies_from_start(mdp, init_state, beta=1, prior=None, dest_set=N
             continue
 
         goal_val = -V[C] + np.log(prior[C])
-        # TODO: This temporary implementation will break if there is more than
+        # XXX: This temporary implementation will break if there is more than
         # one possible destination. For more information, review Ziebart.
+        # [Don't care about softmax for now. We probably aren't going to use it
+        # because it is too slow.]
         D_dest += forwards_value_iter(mdp, C, beta=beta,
                     fixed_init_val=goal_val, verbose=verbose)
 

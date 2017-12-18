@@ -5,6 +5,8 @@ import Queue
 from ..softact_shared import q_values as _q_values
 from ..softact_shared import action_probabilities \
         as _action_probabilities
+from ..softact_shared import trajectory_probability \
+        as _trajectory_probability
 
 def forwards_value_iter(mdp, goal_state, *args, **kwargs):
     kwargs["forwards"] = True
@@ -30,7 +32,6 @@ def _value_iter(mdp, s, forwards, beta=1, verbose=False):
         s [int]: The init_state or the goal_state, depending on the
             value of forwards. In either case, V[s] = 0.
         forwards [bool]: Described in the function summary.
-        lazy_s [bool]: TODO
 
     Returns:
         V [np.ndarray]: An `mdp.S`-length vector, where the ith entry is
@@ -74,3 +75,7 @@ def q_values(mdp, goal_state):
 
 def action_probabilities(mdp, goal_state, **kwargs):
     return _action_probabilities(mdp, goal_state, q_values, **kwargs)
+
+def trajectory_probability(*args, **kwargs):
+    return _trajectory_probability(*args,
+            action_probabilities=action_probabilities, **kwargs)

@@ -1,4 +1,3 @@
-from __future__ import absolute_import
 from enum import IntEnum
 import numpy as np
 
@@ -37,7 +36,6 @@ class GridWorldMDP(MDP):
         DOWN_RIGHT = 7
         ABSORB = 8
 
-    # TODO: investigate how goal state works nowadays
     def __init__(self, rows, cols, reward_dict={}, goal_state=None, default_reward=-5,
             euclidean_rewards=True):
         """
@@ -103,8 +101,7 @@ class GridWorldMDP(MDP):
             self.state_rewards[self.coor_to_state(r,c)] = reward
         self.set_goal(goal_state)
 
-        # XXX: This is a hack to enable q_value caching.
-        # And maybe qualifies as technical debt.
+        # Used by mdp.softact_shared.q_values
         self.q_cache = {}
 
     def copy(self):
@@ -113,10 +110,9 @@ class GridWorldMDP(MDP):
         return cp
 
     def _transition(self, s, a):
-        # import pdb; pdb.set_trace()
         return self.transition_cached[s, a]
 
-    # TODO: optimize so that we don't need to convert between state and coor.
+    # XXX: optimize so that we don't need to convert between state and coor.
     def _transition_helper(self, s, a, alert_illegal=False):
         r, c = self.state_to_coor(s)
         assert a >= 0 and a < len(self.Actions), a

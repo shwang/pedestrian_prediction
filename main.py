@@ -37,3 +37,19 @@ def andrea_states():
                 auto_logarithm=False)
 
 andrea_states()
+
+from pp.plot.common_multi import _occ_starter, _traj_starter
+def benchmark(traj_mode="diag", mode="tri", T=2, N=90, R=-1):
+    g = GridWorldMDP(N, N, default_reward=R)
+
+    g, _, start, dest_list = _occ_starter(N, R, mode)
+    traj = _traj_starter(N, start, traj_mode)[:50]
+
+    def test():
+        D = inf.occupancy.infer(g, traj, dest_list, T=T, verbose=False)
+
+    test()
+    import cProfile
+    cProfile.runctx('test()', globals(), locals())
+
+benchmark()

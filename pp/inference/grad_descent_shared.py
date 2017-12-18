@@ -9,8 +9,6 @@ def simple_search(g, traj, goal, compute_score,
         guess=None, delta=1e-2, beta_threshold=5e-6,
         verbose=False, min_beta=0.7, max_beta=11, min_iters=5, max_iters=20):
 
-    verbose=True
-
     if len(traj) == 0:
         return guess
     lo, hi = min_beta, max_beta
@@ -48,8 +46,7 @@ def simple_search(g, traj, goal, compute_score,
 
 def binary_search(g, traj, goal, compute_grad,
         guess=None, grad_threshold=1e-9, beta_threshold=5e-5,
-        min_iters=10, max_iters=30, min_beta=0.7, max_beta=11, verbose=False):
-    verbose=True
+        min_iters=3, max_iters=30, min_beta=0.01, max_beta=100, verbose=False):
 
     if len(traj) == 0:
         return guess

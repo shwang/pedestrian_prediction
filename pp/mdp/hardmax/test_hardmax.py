@@ -3,10 +3,10 @@ import numpy as np
 from numpy import testing as t
 
 from ..mdp import GridWorldMDP
-from .hardmax import backwards_value_iter, forwards_value_iter, q_values
-from .hardmax import action_probabilities
+from .hardmax import *
 
 Actions = GridWorldMDP.Actions
+ni = -np.inf
 
 class TestBackwardsValueIter(TestCase):
     def test_simple(self):
@@ -67,14 +67,35 @@ class TestQValues(TestCase):
         t.assert_allclose(Q, q_values(g, 2))
 
 class TestActionProbabilities(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.g = GridWorldMDP(5,5)
+
     def test_one_choice(self):
-        ni = -np.inf
         q_cached = np.array([[1, ni, ni], [ni, 1, ni], [ni, ni, 1]])
-        P = action_probabilities("not an mdp", 3, q_cached=q_cached)
+        P = action_probabilities(self.g, 3, q_cached=q_cached)
         t.assert_allclose(P, [[1, 0, 0], [0, 1, 0], [0, 0, 1]])
 
     def test_uniform(self):
         q_cached = np.zeros([3,3])
-        P = action_probabilities("not an mdp", 3, q_cached=q_cached)
+        P = action_probabilities(self.g, 3, q_cached=q_cached)
         t.assert_allclose(P, np.ones([3,3])/3)
 
+class TestTrajProb(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.g = GridWorldMDP(5,5)
+
+    def test_empty(self):
+        t.assert_equal(trajectory_probability(self.g, 2, [], beta=1), 1)
+        t.assert_equal(trajectory_probability(self.g, 2, [], beta=2), 1)
+        t.assert_equal(trajectory_probability(self.g, 2, [], beta=3), 1)
+
+    def test_one_traj(self):
+        fake_prob = np.zeros([self.g.S, self.g.A])
+        traj = [(0,0), (1,1), (2, 2)]
+        fake_prob[0, 0] = 0.5
+        fake_prob[1, 1] = 0.5
+        fake_prob[2, 2] = 0.5
+        t.assert_equal(trajectory_probability(self.g, 2, traj=traj,
+                    cached_act_probs=fake_prob), 0.125)
