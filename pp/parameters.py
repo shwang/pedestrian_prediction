@@ -8,7 +8,8 @@ import mdp.hardmax
 # which is part of inference.hardmax, is importing
 # this module.
 import sys
-inf_hardmax = sys.modules['pp.inference.hardmax']
+#inf_hardmax = sys.modules['pp.inference.hardmax']
+inf_hardmax = sys.modules['pedestrian_prediction.pp.inference.hardmax']
 
 inf_default = inf_hardmax  # default type of inference
 val_default = mdp.hardmax
