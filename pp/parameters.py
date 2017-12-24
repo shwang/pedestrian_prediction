@@ -1,17 +1,17 @@
-import inference.hardmax
-import mdp.euclid
-import mdp.hardmax
+import sys
 
-# import inference.hardmax as inf_hardmax  # FAILS!
 # TODO: Figure this crazy import mess another day.
 # I'm guessing this is because hardmax.occupancy
 # which is part of inference.hardmax, is importing
 # this module.
-import sys
-if 'pp.inference.hardmax' in sys.modules:
-    inf_hardmax = sys.modules['pp.inference.hardmax']
+import mdp.euclid
+if 'pp.mdp.euclid' in sys.modules:
+    val_default = sys.modules['pp.mdp.euclid']
 else:
-    inf_hardmax = sys.modules['pedestrian_prediction.pp.inference.hardmax']
+    val_default = sys.modules['pedestrian_prediction.pp.mdp.euclid']
 
-inf_default = inf_hardmax  # default type of inference
-val_default = mdp.euclid
+import inference.hardmax
+if 'pp.inference.hardmax' in sys.modules:
+    inf_default = sys.modules['pp.inference.hardmax']
+else:
+    inf_default = sys.modules['pedestrian_prediction.pp.inference.hardmax']

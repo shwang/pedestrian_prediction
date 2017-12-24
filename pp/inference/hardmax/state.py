@@ -33,29 +33,39 @@ def infer_simple(g, init_state, dest, T, beta=1, action_prob=None,
 
 def infer_from_start(g, init_state, dest_or_dests, T, dest_probs=None,
         verbose=False, beta_or_betas=1,
-        cached_action_probs=None, all_steps=True, val_mod=val_default):
+        cached_action_probs=None, verbose_return=True, val_mod=val_default):
     """
+    Infer state probabilities over the next T timesteps before evidence for the
+    true destination and irrationality coefficent of the agent is observed.
+
     Params:
         g [GridWorldMDP] -- The MDP in which the agent resides.
         init_state [int] -- The agent's current state.
         dest_or_dests [int] -- The agent's goal, or a list of potential goals.
         T [int] -- Make an inference for state probabilities at this many
             timesteps in the future.
-        dest_probs [np.ndarray] -- The posterior probability of each
-            destination.
+        dest_probs [np.ndarray] (optional) -- The posterior probability of each
+            destination. By default, uniform over each possible destination.
         beta_or_betas [float] (optional) -- The irrationality coefficient, or
             a list of irrationality coefficients coresponding to each of the
             agent's potential goals.
         cached_action_probs [np.ndarray] (optional) -- Cached results from
             `inference.hardmax.action_probabilities()`.
-        all_steps [bool] (optional) -- If True, then return all state
-            probabilities up to T in a 2D array.
-    Returns:
-        If `all_steps` is True, then returns all state probabilities for
-        timesteps 0,1,...,T in a 2D array. (with dimension (T+1) x mdp.S)
+        verbose_return [bool] (optional) -- If True, then return all state
+            probabilities up to T in a 2D array, the MLE betas and
+            destination probabilities.
 
-        Otherwise, returns a 1D array with the state probabilities for the
-        Tth timestep. (with dimension mdp.S)
+    Returns:
+        If `verbose_return` is False, returns `P`, a 1D array with the state
+        probabilities for the Tth timestep. (with dimension mdp.S)
+
+        If `verbose_return` is True, then returns (P, betas, dest_probs).
+        P [np.ndarray] -- the state probabilities for timesteps 0,1,...,T in a
+            2D array (with dimension (T+1) x mdp.S).
+        betas [np.ndarray]-- a 1D array which contains the beta associated with
+            each destination.
+        dest_probs [np.ndarray]-- a 1D array which contains the probability of
+            each destination being the true destination.
     """
     if T is None:
         T = g.rows + g.cols
@@ -89,18 +99,42 @@ def infer_from_start(g, init_state, dest_or_dests, T, dest_probs=None,
         np.multiply(P_D, dest_prob, out=P_D)
         np.add(P, P_D, out=P)
 
-    if all_steps:
-        return P
+    if verbose_return:
+        return P, betas, dest_probs
     else:
         return P[T]
 
 
 def infer(g, traj, dest_or_dests, T=None, verbose=False, beta_or_betas=None,
         hmm=False, hmm_opts={},
-        auto_beta=True, beta_guesses=None, bin_search_opts={},
+        beta_guesses=None, bin_search_opts={},
         **kwargs):
     """
-    If beta_or_betas not provided, then use MLE beta.
+    Infer the state probabilities over the next T timesteps and a nonempty
+    trajectory, which may be used to estimate destination probabilities and
+    the MLE beta associated with each destination.
+
+    Params:
+    g [GridWorldMDP] -- The agent's MDP.
+    traj [list of (int, int)] -- A list of state-action pairs describing the
+        agent's trajectory.
+    dest_or_dests [int or np.ndarray]: A single destination, or a list of
+        possible destinations.
+    T [int]: The number of timesteps to predict into the future.
+    beta_or_betas [int or np.ndarray] (optional): A fixed beta, or a list of
+        betas corresponding to each destination. If not provided, then
+        automatically compute MLE betas from the trajectory for each
+        destination.
+    beta_guesses [list of float] (optional): A list of initial guesses for the
+        MLE beta corresponding to each destination.
+    hmm [bool] (optional): Whether or not to use the 'epsilon-greedy' HMM model
+        for the agent's destination.
+
+    verbose_return [bool] (optional): If True, then this function also returns
+        the MLE beta and calculated destination probabilities.
+
+    Returns:
+        See the documentation for `infer_from_start`.
     """
     assert len(traj) > 0, traj
     s_b = g.transition(*traj[-1])

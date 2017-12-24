@@ -26,15 +26,33 @@ def infer_from_start(g, init_state, dest_or_dests, dest_probs=None,
         T=None, verbose=False, beta_or_betas=1, cached_action_probs=None,
         verbose_return=False):
     """
-    If verbose_return: returns D, D_dests, dest_probs, betas
-    else: returns D
+    Use prior to calculate the expected number of times that the agent will
+    enter each state.
 
+    Params:
+        g [GridWorldMDP] -- The MDP in which the agent resides.
+        init_state [int] -- The agent's current state.
+        dest_or_dests [int] -- The agent's goal, or a list of potential goals.
+        T [int] -- Make an inference for state probabilities at this many
+            timesteps in the future.
+        dest_probs [np.ndarray] (optional) -- The posterior probability of each
+            destination. By default, uniform over each possible destination.
+        beta_or_betas [float] (optional) -- The irrationality coefficient, or
+            a list of irrationality coefficients coresponding to each of the
+            agent's potential goals.
+        cached_action_probs [np.ndarray] (optional) -- Cached results from
+            `inference.hardmax.action_probabilities()`.
+        verbose_return [bool] (optional) -- If True, return extra information.
+
+    Returns:
+    If verbose_return is True, then returns D, D_dests, dest_probs, betas
+    If verbose_return is False, then returns D
+
+    D, a 2D array, is a weighted sum of the occupancies in D_dests. The weight
+        for each occupancy grid is equal to the posterior probability of the
+        associated destination.
     D_dests is a list of 2D arrays. The ith array is the expected occupancy
         given that the true destination is the ith destination.
-    D, a 2D array, is a weighted sum of the occupancies in D_dests. The weight
-        for each
-        occupancy grid is equal to the posterior probability of the associated
-        destination.
     dest_probs, a 1D array, is the posterior probability of each destination.
     betas is a 1D array containing the MLE beta for each destination.
     """
@@ -80,10 +98,30 @@ def infer_from_start(g, init_state, dest_or_dests, dest_probs=None,
 
 def infer(g, traj, dest_or_dests, T=None, verbose=False, beta_or_betas=None,
         hmm=False, hmm_opts={},
-        auto_beta=True, beta_guesses=None, bin_search_opts={},
+        beta_guesses=None, bin_search_opts={},
         **kwargs):
     """
-    If beta_or_betas not provided, then use MLE beta.
+    Using the trajectory as evidence for MLE beta and the probability of each
+    destination in the destination set, calculate the expected number of times
+    that the agent will enter each state.
+
+    Params:
+        g [GridWorldMDP] -- The MDP in which the agent resides.
+        init_state [int] -- The agent's current state.
+        dest_or_dests [int] -- The agent's goal, or a list of potential goals.
+        T [int] -- Make an inference for state probabilities at this many
+            timesteps in the future.
+        dest_probs [np.ndarray] -- The posterior probability of each
+            destination.
+        beta_or_betas [float] (optional) -- The irrationality coefficient, or
+            a list of irrationality coefficients coresponding to each of the
+            agent's potential goals.
+        cached_action_probs [np.ndarray] (optional) -- Cached results from
+            `inference.hardmax.action_probabilities()`.
+        verbose_return [bool] (optional): If True, then this function also
+            returns the MLE beta and calculated destination probabilities.
+    Returns:
+        See the documentation for `infer_from_start`.
     """
     assert len(traj) > 0, traj
     s_b = g.transition(*traj[-1])

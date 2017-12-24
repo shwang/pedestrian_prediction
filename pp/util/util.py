@@ -2,8 +2,6 @@ import numpy as np
 
 from itertools import imap
 
-from ..parameters import inf_default
-
 def sum_rewards(mdp, traj):
     return sum(imap(lambda x: mdp.rewards[x[0], x[1]], traj))
 
@@ -46,10 +44,10 @@ def build_traj_from_actions(g, init_state, actions):
     return traj
 
 def traj_stats(g, start, goal, traj, beta=1, dest_set=None,
-        T=0, c_0=-20, sigma_0=5, sigma_1=5, heat_maps=(), zmin=None, zmax=None,
-        inf_mod=inf_default):
+        T=0, c_0=-20, sigma_0=5, sigma_1=5, heat_maps=(), zmin=None, zmax=None):
 
-    print "Task: Start={}, Goal={}".format(g.state_to_coor(start), g.state_to_coor(goal))
+    print "Task: Start={}, Goal={}".format(g.state_to_coor(start),
+            g.state_to_coor(goal))
     print "Assumed beta={}".format(beta)
     print "Possible goals:"
     if dest_set == None:
@@ -65,8 +63,3 @@ def traj_stats(g, start, goal, traj, beta=1, dest_set=None,
     P = infer_destination(g, traj, beta=beta, dest_set=dest_set)
     print "goal probabilities (softmax):"
     print P.reshape(g.rows, g.cols)
-
-    occ = inf_mod.occupancy
-    D = occ.infer(g, traj, beta=beta, dest_set=dest_set).reshape(g.rows, g.cols)
-    print "expected occupancies:\n"
-    print D.reshape(g.rows, g.cols)

@@ -8,36 +8,41 @@ from ..util.hardmax import simulate, sample_action
 
 from ..parameters import inf_default
 
+import plotly.offline as py
+from plotly import tools as tools
+import plotly.graph_objs as go
+
 Actions = GridWorldMDP.Actions
 
 
-def make_heat_map(g, occupancies, traj, stars,
-        zmin=None, zmax=0, auto_logarithm=True):
-    import plotly.graph_objs as go
-    data = []
-
-    o = occupancies.T
+def make_heat_map(g, occupancies, zmin=-5, zmax=0, auto_logarithm=True):
+    o = occupancies.reshape(g.rows, g.cols).T
     if auto_logarithm:
         o = np.log(o)
     o[o == -np.inf] = -9999
     hm = go.Heatmap(z=o, zmin=zmin, zmax=zmax, name="log expected occupancy")
-    data.append(hm)
+    return hm
+
+
+def make_line(g, traj, **xtra_line_settings):
+    settings = dict(color='white', width=3)
+    settings.update(xtra_line_settings)
 
     states = [s for s, a in traj]
     states.append(g.transition(*traj[-1]))
-
     coors = [g.state_to_coor(s) for s in states]
     x, y = zip(*coors)
-    line = dict(x=x, y=y, line=dict(color='white', width=3))
-    data.append(line)
+    line = dict(x=x, y=y, line=settings)
+    return line
 
-    if len(stars) > 0:
-        x, y = zip(*[g.state_to_coor(s) for s in stars])
-        dest_markers = go.Scatter(x=x, y=y,
-            mode='markers', marker=dict(size=20, color="white", symbol="star"))
-        data.append(dest_markers)
 
-    return data
+def make_stars(g, stars=[], **xtra_marker_settings):
+    settings = dict(size=20, color="white", symbol="star")
+    settings.update(xtra_marker_settings)
+
+    x, y = zip(*[g.state_to_coor(s) for s in stars])
+    markers = go.Scatter(x=x, y=y, mode='markers', marker=settings)
+    return markers
 
 
 def plot_heat_maps(g, traj_or_trajs, occupancy_list, title_list,
@@ -45,8 +50,8 @@ def plot_heat_maps(g, traj_or_trajs, occupancy_list, title_list,
     """
     traj_or_trajs: A trajectory (list of state-action pairs), or a list of
         trajectories.
-    stars_grid: A list of lists. The ith list is a list of states on which to place
-        stars in the ith heat map.
+    stars_grid: A list of lists. The ith list is a list of states on which to
+        place stars in the ith heat map.
             OR a single list, which is used for every heat map.
     """
     subplot_list = []
@@ -75,9 +80,12 @@ def plot_heat_maps(g, traj_or_trajs, occupancy_list, title_list,
 
     for o, stars, traj in zip(occupancy_list, stars_grid, trajs):
         o = o.reshape(g.rows, g.cols)
-        trace = make_heat_map(g, o, traj, stars,
-                zmin=zmin, zmax=zmax, auto_logarithm=auto_logarithm)
-        subplot_list.append(trace)
+        data = []
+        data.append(make_heat_map(g, o, zmin=zmin, zmax=zmax,
+            auto_logarithm=auto_logarithm))
+        data.append(make_line(g, traj))
+        data.append(make_stars(g, stars))
+        subplot_list.append(data)
 
     subplots(subplot_list, title_list, **kwargs)
 
@@ -85,7 +93,6 @@ def plot_heat_maps(g, traj_or_trajs, occupancy_list, title_list,
 def subplots(subplot_list, title_list, title=None, save_png=False,
         **kwargs):
     assert len(subplot_list) == len(title_list), (subplot_list, title_list)
-    from plotly import tools as tools
 
     fig = tools.make_subplots(rows=1, cols=len(subplot_list),
             subplot_titles=title_list)
@@ -94,12 +101,11 @@ def subplots(subplot_list, title_list, title=None, save_png=False,
         for t in subplot:
             fig.append_trace(t, 1, i+1)
 
-    show_plot(fig, save_png)
+    show_plot(fig, save_png, **kwargs)
 
 
 uid_pointer = [100]
 def show_plot(fig, save_png=False, delay=3.2):
-    import plotly.offline as py
     uid_pointer[0] += 1
     uid = uid_pointer[0]
     if not save_png:
