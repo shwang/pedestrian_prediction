@@ -2,27 +2,22 @@ from __future__ import division
 
 import numpy as np
 import destination
+import state
 
 from ...parameters import val_default
 from ...util.args import unpack_opt_list
 
+def infer_simple(g, init_state, dest, T, beta=1, action_prob=None,
+        val_mod=val_default):
+    """
+    Calculate expected occupancy for a `beta`-rational agent over trajectories
+    of length T, given a fixed destination `dest`.
 
-def _infer(g, init_state, dest, T, beta=1, action_prob=None, val_mod=val_default):
-    if action_prob is None:
-        action_prob = val_mod.action_probabilities(g, dest, beta=beta)
-
-    res = np.zeros([T+1, g.S])
-    res[0][init_state] = 1
-    for t in range(1, T+1):
-        P = res[t-1]
-        P_prime = res[t]
-        for s in range(g.S):
-            if P[s] == 0:
-                continue
-            for a, s_prime in g.neighbors[s]:
-                P_prime[s_prime] += P[s] * action_prob[s, a]
-
-    D = np.sum(res[1:], axis=0)
+    Return the expected number of times that the agent will enter each state
+    as an 1D array of dimension (`g.S`).
+    """
+    P = state.infer_simple(g, init_state, dest, T, beta, action_prob, val_mod)
+    D = np.sum(P[1:], axis=0)
     D[dest] = 1  # This value is fixed.
     return D
 
@@ -57,7 +52,7 @@ def infer_from_start(g, init_state, dest_or_dests, dest_probs=None,
         act_probs = unpack_opt_list(cached_action_probs)
     else:
         act_probs = [None] * L
-    assert len(act_probs) == L, act_prob_list
+    assert len(act_probs) == L, act_probs
 
     # Unpack dest_prob
     if dest_probs is None:
@@ -70,9 +65,10 @@ def infer_from_start(g, init_state, dest_or_dests, dest_probs=None,
     D_dests = []  # Only for verbose_return
     for dest, beta, act_prob, dest_prob in zip(
             dests, betas, act_probs, dest_probs):
-        D_dest = _infer(g, init_state, dest, T, beta=beta,
+        D_dest = infer_simple(g, init_state, dest, T, beta=beta,
                 action_prob=act_prob)
-        D_dests.append(np.copy(D_dest))
+        if verbose_return:
+            D_dests.append(np.copy(D_dest))
         np.multiply(D_dest, dest_prob, out=D_dest)
         np.add(D, D_dest, out=D)
 
@@ -107,6 +103,7 @@ def infer(g, traj, dest_or_dests, T=None, verbose=False, beta_or_betas=None,
 
     return infer_from_start(g, s_b, dest_list, dest_probs=dest_probs,
             T=T, verbose=verbose, beta_or_betas=betas, **kwargs)
+
 
 def _main():
     from mdp import GridWorldMDP

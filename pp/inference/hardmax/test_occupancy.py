@@ -23,7 +23,7 @@ class TestInferFromStart(TestCase):
         D = D0 = np.zeros(9)
         D[0] = 1
         t.assert_allclose(D, infer_from_start(mdp, 0, 3, T=0,
-            all_steps=False, cached_action_prob=p))
+            all_steps=False, cached_action_probs=p))
 
         D = D1 = np.zeros(9)
         D[0] = 1
@@ -32,7 +32,7 @@ class TestInferFromStart(TestCase):
         D[mdp.coor_to_state(1,0)] = 1 / mdp.A
         D[mdp.coor_to_state(1,1)] = 1 / mdp.A
         t.assert_allclose(D, infer_from_start(mdp, 0, 3, T=1,
-            all_steps=False, cached_action_prob=p))
+            all_steps=False, cached_action_probs=p))
 
         D = D2 = np.zeros(9)
         D[0] = 1
@@ -47,25 +47,20 @@ class TestInferFromStart(TestCase):
         D[mdp.coor_to_state(2,0)] = 2*q
         D[mdp.coor_to_state(2,1)] = 2*q
         t.assert_allclose(D, infer_from_start(mdp, 0, 3, T=2,
-            all_steps=False, cached_action_prob=p))
+            all_steps=False, cached_action_probs=p))
 
         t.assert_allclose([D0, D1, D2], infer_from_start(mdp, 0, 3, T=2,
-            cached_action_prob=p, all_steps=True))
+            cached_action_probs=p, all_steps=True))
 
+    def test_infer_multidest_no_crash(self):
+        mdp = GridWorldMDP(3, 3)
+        p = uniform = np.ones([mdp.S, mdp.A]) / mdp.A
 
-   #  def test_easy(self):
-   #      mdp = GridWorldMDP(3, 3)
-   #      uniform = np.ones([3, 3]) / 3
-   #      action_prob = {s: uniform for s in range(mdp.S)}
-
-   #      D = np.zeros(9)
-   #      D[0] = 1
-   #      t.assert_allclose(D, infer_from_start(mdp, 0, 3, T=0))
-
-   #      D = np.zeros(9)
-   #      D[0] = 1
-   #      D[mdp.coor_to_state(0,0)] = (mdp.A - 3) / mdp.A
-   #      D[mdp.coor_to_state(0,1)] = 1 / mdp.A
-   #      D[mdp.coor_to_state(1,0)] = 1 / mdp.A
-   #      D[mdp.coor_to_state(1,1)] = 1 / mdp.A
-   #      t.assert_allclose(D, infer_from_start(mdp, 0, 3, T=1))
+        D = D1 = np.zeros(9)
+        D[0] = 1
+        D[mdp.coor_to_state(0,0)] = 1 / mdp.A
+        D[mdp.coor_to_state(0,1)] = 1 / mdp.A
+        D[mdp.coor_to_state(1,0)] = 1 / mdp.A
+        D[mdp.coor_to_state(1,1)] = 1 / mdp.A
+        traj = [(4,4)]
+        infer(mdp, traj, [0, 1], T=1, all_steps=False, cached_action_probs=p)
