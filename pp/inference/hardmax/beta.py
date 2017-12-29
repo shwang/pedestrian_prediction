@@ -13,7 +13,15 @@ def compute_score(g, traj, goal, beta, cached_P=None, debug=False,
     else:
         P = cached_P
 
-    score = np.empty(len(traj))
+    # XXX: Keeping here for now, since it is useful for debugging, and I was
+    #   recently confused by some beta MLE results.
+    # A = g.Actions
+    # s, a = traj[0]
+    # V = val_mod.forwards_value_iter(g, goal)
+    # Q = val_mod.q_values(g, goal)
+    # import pdb; pdb.set_trace()
+
+    score = np.zeros(len(traj))
     for i, (s, a) in enumerate(traj):
         score[i] = P[s, a]
 
@@ -26,7 +34,7 @@ def compute_grad(g, traj, goal, beta, debug=False, val_mod=val_default):
     # Prevent -inf * 0 in the multiply(P,Q) operation.
     # REQUIRES NUMPY VERSION 1.13
     np.nan_to_num(Q, copy=False)
-    P = val_mod.action_probabilities(g, goal, beta=beta, q_cached=Q)
+    P = val_mod.action_probabilities(g, goal, beta=beta)
     assert Q.shape == P.shape
 
     q_sum = 0

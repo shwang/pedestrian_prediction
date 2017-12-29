@@ -1,3 +1,5 @@
+from __future__ import division
+
 from enum import IntEnum
 import numpy as np
 
@@ -37,7 +39,7 @@ class GridWorldMDP(MDP):
         ABSORB = 8
 
     def __init__(self, rows, cols, reward_dict={}, goal_state=None, default_reward=-5,
-            euclidean_rewards=True):
+            euclidean_rewards=True, allow_wait=False):
         """
         An agent in a GridWorldMDP can move between adjacent/diagonal cells.
 
@@ -49,12 +51,15 @@ class GridWorldMDP(MDP):
             cols [int]: The number of columns in the grid world.
             reward_dict [dict]: Maps (r, c) to _reward. In the GridWorldMDP, transitioning
                 to (r, c) will grant the reward _reward.
-            goal_state [int]: (optional) The goal state at which ABSORB is legal and costs 0.
-                If not provided, then goal_state is 0 everywhere.
+            goal_state [int]: (optional) The goal state at which ABSORB is legal
+                and costs 0.
             default_reward [float]: (optional) Every reward not set by reward_dict
                 will receive this default reward instead.
             euclidean_rewards [bool]: (optional) If True, then scale rewards for moving
                 diagonally by sqrt(2).
+            allow_wait [bool]: (optional) If False, then the ABSORB action is
+                illegal in all states except the goal. If True, then the ABSORB
+                action costs default_reward in states other than the goal.
         """
         assert rows > 0
         assert cols > 0
@@ -66,6 +71,8 @@ class GridWorldMDP(MDP):
         S = rows * cols
         A = len(self.Actions)
 
+        self.default_reward = default_reward
+
         rewards = np.zeros([S, A])
         rewards.fill(default_reward)
 
@@ -75,6 +82,7 @@ class GridWorldMDP(MDP):
         self.reverse_neighbors = [[] for _ in xrange(S)]
 
         self.transition_cached = np.empty([S, A], dtype=int)
+        self.allow_wait = allow_wait
 
         for s in xrange(S):
             for a in xrange(A):
@@ -154,14 +162,21 @@ class GridWorldMDP(MDP):
     def set_goal(self, goal_state):
         """
         Reconfigure the goal state in this GridWorldMDP by allowing an agent at
-        the goal state to use the ABSORB action at no cost. At all other states,
+        the goal state to use the ABSORB action at no cost.
+
+        If self.allow_wait is True, then at nongoal states, ABSORB has
+        half the `default_reward` cost.
+        If self.allow_wait is False, then at nongoal states,
         ABSORB will be illegal (i.e., incur inf cost).
 
         Params:
             goal_state: The new goal. Overrides previous goals.
         """
         self.goal = goal_state
-        self.rewards[:, self.Actions.ABSORB].fill(float(u'-inf'))
+        if self.allow_wait:
+            self.rewards[:, self.Actions.ABSORB].fill(self.default_reward)
+        else:
+            self.rewards[:, self.Actions.ABSORB].fill(-np.inf)
         if goal_state != None:
             self.rewards[goal_state, self.Actions.ABSORB] = 0
 
@@ -182,8 +197,8 @@ class GridWorldMDP(MDP):
             s [int]: The state number associated with the given coordinates in a standard
                 grid world.
         """
-        assert 0 <= r < self.rows, u"invalid (rows, r)={}".format((self.rows, r))
-        assert 0 <= c < self.cols, u"invalid (cols, c)={}".format((self.cols, c))
+        assert 0 <= r < self.rows, "invalid (rows, r)={}".format((self.rows, r))
+        assert 0 <= c < self.cols, "invalid (cols, c)={}".format((self.cols, c))
         return r * self.cols + c
 
     def state_to_coor(self, s):

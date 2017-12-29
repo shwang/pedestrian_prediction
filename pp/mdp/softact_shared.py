@@ -29,8 +29,8 @@ def q_values(mdp, goal_state, forwards_value_iter):
                 Q[s,a] = mdp.rewards[s,a] + V[mdp.transition(s,a)]
     assert Q.shape == (mdp.S, mdp.A)
 
-    mdp.q_cache[goal_state] = np.copy(Q)
-    return Q
+    mdp.q_cache[goal_state] = Q
+    return np.copy(Q)
 
 def action_probabilities(mdp, goal_state, q_values, beta=1, q_cached=None):
     """
