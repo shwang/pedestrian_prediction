@@ -5,10 +5,19 @@ import sys
 # which is part of inference.hardmax, is importing
 # this module.
 import mdp.euclid
+import mdp.hardmax
+
 if 'pp.mdp.euclid' in sys.modules:
-    val_default = sys.modules['pp.mdp.euclid']
+    val_euclid = sys.modules['pp.mdp.euclid']
 else:
-    val_default = sys.modules['pedestrian_prediction.pp.mdp.euclid']
+    val_euclid = sys.modules['pedestrian_prediction.pp.mdp.euclid']
+
+if 'pp.mdp.hardmax' in sys.modules:
+    val_hardmax = sys.modules['pp.mdp.hardmax']
+else:
+    val_hardmax = sys.modules['pedestrian_prediction.pp.mdp.hardmax']
+
+val_default = val_euclid
 
 import inference.hardmax
 if 'pp.inference.hardmax' in sys.modules:
