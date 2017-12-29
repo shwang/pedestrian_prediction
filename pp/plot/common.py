@@ -24,24 +24,43 @@ def make_heat_map(g, occupancies, zmin=-5, zmax=0, auto_logarithm=True):
     return hm
 
 
-def make_line(g, traj, **xtra_line_settings):
-    settings = dict(color='white', width=3)
-    settings.update(xtra_line_settings)
-
+def make_line(g, traj, name=None, **extra_settings):
     states = [s for s, a in traj]
     states.append(g.transition(*traj[-1]))
+    return make_line_from_states(g, states, name=name, **extra_settings)
+
+
+def make_line_from_states(g, states, name=None, **extra_settings):
+    settings = dict(color='white', width=3)
+    settings.update(extra_settings)
+
     coors = [g.state_to_coor(s) for s in states]
     x, y = zip(*coors)
-    line = dict(x=x, y=y, line=settings)
+    line = dict(x=x, y=y, name=name, line=settings)
     return line
 
 
-def make_stars(g, stars=[], **xtra_marker_settings):
-    settings = dict(size=20, color="white", symbol="star")
-    settings.update(xtra_marker_settings)
+def make_rect(g, s, radius, name=None, **extra_settings):
+    """ Remember, rect does not belong in data, but in layout.shapes """
+    x_c, y_c = g.state_to_coor(s)
+    x0, x1 = x_c - radius, x_c + radius
+    y0, y1 = y_c - radius, y_c + radius
+    rect = dict(type="rect", x0=max(x0, -0.5), y0=max(y0, -0.5),
+            x1=min(x1, g.rows+0.5), y1=min(y1, g.cols+0.5),
+            line=dict(color="white"))
+    rect.update(extra_settings)
+    return rect
 
-    x, y = zip(*[g.state_to_coor(s) for s in stars])
-    markers = go.Scatter(x=x, y=y, mode='markers', marker=settings)
+
+def make_stars(g, stars=[], name=None, **extra_settings):
+    settings = dict(size=20, color="white", symbol="star")
+    settings.update(extra_settings)
+
+    if len(stars) > 0:
+        x, y = zip(*[g.state_to_coor(s) for s in stars])
+    else:
+        x, y = [], []
+    markers = go.Scatter(x=x, y=y, name=name, mode='markers', marker=settings)
     return markers
 
 
@@ -90,13 +109,23 @@ def plot_heat_maps(g, traj_or_trajs, occupancy_list, title_list,
     subplots(subplot_list, title_list, **kwargs)
 
 
-def subplots(subplot_list, title_list, title=None, save_png=False,
-        **kwargs):
+def subplots(subplot_list, title_list, shapes_list=[], title=None,
+        save_png=False, legend_settings={}, **kwargs):
     assert len(subplot_list) == len(title_list), (subplot_list, title_list)
 
     fig = tools.make_subplots(rows=1, cols=len(subplot_list),
             subplot_titles=title_list)
     fig['layout'].update(title=title)
+    shapes_joined = []
+    for i, shapes in enumerate(shapes_list):
+        for s in shapes:
+            s['xref'] = 'x'+str(i+1) if i > 0 else 'x'
+            s['yref'] = 'y'+str(i+1) if i > 0 else 'y'
+        shapes_joined += shapes
+
+    fig['layout']['shapes'] = shapes_joined
+    fig['layout'].update(legend=legend_settings)
+
     for i, subplot in enumerate(subplot_list):
         for t in subplot:
             fig.append_trace(t, 1, i+1)
@@ -252,8 +281,8 @@ def simple_traj_inf(traj_or_traj_mode="diag", mode="diag", N=30, R=-1, title=Non
         stars_grid = [goal]
 
         subplot_titles = (
-                    "beta_hat={}".format(beta_hat),
-                    "beta={}".format(beta_fixed))
+                    "beta_hat={:.3f}".format(beta_hat),
+                    "beta={:.3f}".format(beta_fixed))
 
         _title = title or "hardmax expected occupancies R={R}" + \
             " (for trajectories of length {T}) <br>t={t}"
