@@ -92,5 +92,7 @@ class TestRobotPlanner(TestCase):
         g_H = GridWorldMDP(6, 6)
         g_H.set_goal(2)
         # The following calls should not crash.
-        robot_planner(g_R, 0, g_H, traj=[(1, 2)])
-        robot_planner(g_R, 0, g_H, start_H=0)
+        robot_planner(g_R, 0, g_H, collide_penalty=10, collide_radius=1,
+                traj=[(1, 2)])
+        robot_planner(g_R, 0, g_H, collide_penalty=10, collide_radius=1,
+                start_H=0)

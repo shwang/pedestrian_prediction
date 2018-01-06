@@ -1,12 +1,12 @@
 import numpy as np
 
 from robot_planner import CollideProbs, robot_planner
-from robot import _scenario_starter
+from scenarios import scenario_starter
 from ..plot import common as plot
 
 def inspect_probs():
     N=8
-    g_H, start_H, traj_H, g_R, start_R = _scenario_starter("criss-cross", N=N)
+    g_H, start_H, traj_H, g_R, start_R = scenario_starter("criss-cross", N=N)
     T=20
 
     radius, penalty = 3, 5

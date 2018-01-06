@@ -4,11 +4,9 @@ import numpy as np
 from heapq import heappush, heappop
 from ..parameters import inf_default, val_default
 
-def robot_planner(g_R, start_R, g_H, traj=[], start_H=None, inf_mod=inf_default,
-        collide_penalty=50, collide_radius=1, max_depth=100,
-        val_mod=val_default,
-        beta_guess=0.5, calc_beta=True,
-        verbose_return=False,
+def robot_planner(ctx, state_R, traj_H=[], max_depth=100,
+        max_heap_size=200000, k=None, beta_guess=0.5, calc_beta=True,
+        verbose_return=False, val_mod=val_default, inf_mod=inf_default,
         mk_q_values=None, mk_collide_probs=None, mk_binary_search=None):
     """
     if not verbose_return:
@@ -16,35 +14,38 @@ def robot_planner(g_R, start_R, g_H, traj=[], start_H=None, inf_mod=inf_default,
     else:
         return plan, expected_cost, final_node, beta
     """
-    # TODO: fix duplicated default arguments `collide_*`
     bin_search = mk_binary_search or inf_mod.beta.binary_search
     _CollideProbs = mk_collide_probs or CollideProbs
     q_values = mk_q_values or val_default.q_values
+    g_R, g_H = ctx.g_R, ctx.g_H
 
     if calc_beta:
-        beta = bin_search(g_H, traj, g_H.goal, guess=beta_guess, verbose=False,
+        beta = bin_search(g_H, traj_H, g_H.goal, guess=beta_guess,
+                verbose=False, k=k,
                 min_iters=30, max_iters=30, max_beta=100)
     else:
         beta = beta_guess
-    collide_probs = _CollideProbs(g_H, traj=traj, start_H=start_H,
-            beta=beta, T=max_depth, collide_radius=collide_radius)
+
+    collide_probs = _CollideProbs(g_H, traj=traj_H, start_H=ctx.start_H,
+            beta=beta, T=max_depth, collide_radius=ctx.collide_radius)
     q_values_R = q_values(g_R, g_R.goal)
 
     heap = []
-    heappush(heap, (0, AStarNode(g_R, start_R)))
+    heappush(heap, (0, AStarNode(g_R, state_R)))
     visited = set() # Placeholders for return values
     plan = None
-    res_expected_cost = np.inf
+    expected_cost = np.inf
     final_node = None
 
-    while len(heap) > 0:
+    while 0 < len(heap) < max_heap_size:
+        # print("heap size: {}".format(len(heap)))
         ex_cost, node = heappop(heap)
         if node.t > 1 and node.traj[-1] == (g_R.goal, g_R.Actions.ABSORB):
             plan = node.traj
             expected_cost = ex_cost
             final_node = node
             break
-        elif node.t + 1 >= max_depth or node.key() in visited:
+        elif node.key() in visited or node.t >= max_depth:
             continue
         visited.add(node.key())
 
@@ -55,7 +56,7 @@ def robot_planner(g_R, start_R, g_H, traj=[], start_H=None, inf_mod=inf_default,
                 continue
             backward_cost = node.backward_cost - reward
             p = collide_probs.get(node.t + 1, s_prime)
-            backward_cost += p * collide_penalty
+            backward_cost += p * ctx.collide_penalty
             forward_cost = -q_values_R[node.s, a]
 
             child = node.make_child(a, backward_cost)
@@ -97,7 +98,7 @@ class AStarNode(object):
         return (self.t, self.s, self.backward_cost)
 
 class CollideProbs(object):
-    def __init__(self, g_H, T, collide_radius=2, traj=[], start_H=None, beta=1,
+    def __init__(self, g_H, T, collide_radius, traj=[], start_H=None, beta=1,
             start_R=0, state_probs_cached=None, inf_mod=inf_default):
         """
         Helper class for lazily calculating the collide probability at
