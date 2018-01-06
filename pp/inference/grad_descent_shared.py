@@ -46,7 +46,7 @@ def simple_search(g, traj, goal, compute_score,
 
 def binary_search(g, traj, goal, compute_grad,
         guess=None, grad_threshold=1e-9, beta_threshold=5e-5,
-        min_iters=3, max_iters=30, min_beta=0.01, max_beta=50, verbose=False):
+        min_iters=3, max_iters=30, min_beta=0.1, max_beta=50, verbose=False):
 
     lo, hi = min_beta, max_beta
     if guess is None:

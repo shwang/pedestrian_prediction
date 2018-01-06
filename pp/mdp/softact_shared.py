@@ -42,6 +42,7 @@ def action_probabilities(mdp, goal_state, q_values, beta=1, q_cached=None):
         goal_state [int]: The goal state. At the goal state, the agent
             always chooses the ABSORB action at no cost.
     """
+    assert beta > 0, beta
     if q_cached is not None:
         Q = np.copy(q_cached)
     else:
