@@ -6,6 +6,7 @@ import numpy as np
 from numpy import testing as t
 
 from .robot_planner import *
+from .context import HRContext
 from ..mdp import GridWorldMDP
 
 class TestCollideProbs(TestCase):
@@ -92,7 +93,8 @@ class TestRobotPlanner(TestCase):
         g_H = GridWorldMDP(6, 6)
         g_H.set_goal(2)
         # The following calls should not crash.
-        robot_planner(g_R, 0, g_H, collide_penalty=10, collide_radius=1,
-                traj=[(1, 2)])
-        robot_planner(g_R, 0, g_H, collide_penalty=10, collide_radius=1,
+        ctx = HRContext(g_R=g_R, goal_R=35, g_H=g_H, goal_H=2,
+                collide_radius=1, collide_penalty=10, traj_H=[(1, 2)],
                 start_H=0)
+        robot_planner(ctx=ctx, state_R=0, traj_H=[])
+        robot_planner(ctx=ctx, state_R=0, traj_H=[(1, 2)])

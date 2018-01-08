@@ -24,3 +24,5 @@ class HRContext(object):
         self.N = N
         self.g_H, self.start_H, self.traj_H, self.g_R, self.start_R = \
                 scenario_starter(mode, N)
+        self.goal_H, self.goal_R = self.g_H.goal, self.g_R.goal
+        return self
