@@ -6,10 +6,75 @@ from numpy import testing as t
 from ...mdp import GridWorldMDP
 from .state import *
 
-class TestInferFromStart(TestCase):
+class TestInferBayesBeta(TestCase):
 
+    def test_trivial(self):
+        g = GridWorldMDP(3, 3)
+        betas = [0.1, 1, 2]
+        init_state = 2
+        dest = 4
+        T = 0
+
+        expect = np.zeros([1, g.S])
+        expect[0, init_state] = 1
+
+        occ_res, occ_all, P_beta = infer_bayes(g, init_state=init_state,
+                dest=dest, T=T, betas=betas, verbose_return=True)
+
+        t.assert_allclose(P_beta, np.ones(len(betas))/len(betas))
+        for occ_beta in occ_all:
+            t.assert_allclose(occ_beta, expect)
+        t.assert_allclose(occ_res, expect)
+
+
+    def test_suboptimal(self):
+        g = GridWorldMDP(4, 4)
+        betas = [0.1, 1]
+        init_state = g.coor_to_state(1, 1)
+        traj = [(init_state, g.Actions.DOWN_RIGHT)]
+        dest = g.coor_to_state(3, 3)
+        T = 0
+
+        occ_res, occ_all, P_beta = infer_bayes(g, traj=traj, dest=dest,
+                T=T, betas=betas, verbose_return=True)
+
+        # Confirm that P(beta=0.1) < P(beta=1).
+        assert P_beta[0] < P_beta[1], P_beta
+
+        expect = np.zeros([1, g.S])
+        expect[0, init_state] = 1
+
+        for occ_beta in occ_all:
+            t.assert_allclose(occ_beta, expect)
+        t.assert_allclose(occ_res, expect)
+
+
+    def test_optimal(self):
+        g = GridWorldMDP(4, 4)
+        betas = [0.1, 1, 10]
+        init_state = g.coor_to_state(1, 1)
+        traj = [(init_state, g.Actions.UP_RIGHT)]
+        dest = g.coor_to_state(3, 3)
+        T = 0
+
+        occ_res, occ_all, P_beta = infer_bayes(g, traj=traj, dest=dest,
+                T=T, betas=betas, verbose_return=True)
+
+        # Confirm that P(beta=0.1) > P(beta=1) > P(beta=10)
+        assert P_beta[0] > P_beta[1] > P_beta[2], P_beta
+
+        expect = np.zeros([1, g.S])
+        expect[0, init_state] = 1
+
+        for occ_beta in occ_all:
+            t.assert_allclose(occ_beta, expect)
+        t.assert_allclose(occ_res, expect)
+
+
+class TestInferFromStart(TestCase):
     def test_base_case(self):
         mdp = GridWorldMDP(3, 3, euclidean_rewards=True)
+        mdp.set_goal(4)
         D = np.zeros(9)
         D[0] = 1
         t.assert_allclose(D, infer_from_start(mdp, 0, 3, T=0,
@@ -27,30 +92,39 @@ class TestInferFromStart(TestCase):
 
         D = D1 = np.zeros(9)
         D[0] = 1
-        D[mdp.coor_to_state(0,0)] = 1 / mdp.A
+        D[mdp.coor_to_state(0,0)] = (mdp.A - 3) / mdp.A
         D[mdp.coor_to_state(0,1)] = 1 / mdp.A
         D[mdp.coor_to_state(1,0)] = 1 / mdp.A
         D[mdp.coor_to_state(1,1)] = 1 / mdp.A
         t.assert_allclose(D, infer_from_start(mdp, 0, 3, T=1,
             verbose_return=False, cached_action_probs=p))
-
-        D = D2 = np.zeros(9)
-        D[0] = 1
-        q = 1 / mdp.A / mdp.A
-        D[mdp.coor_to_state(0,0)] = 4*q
-        D[mdp.coor_to_state(0,1)] = 4*q
-        D[mdp.coor_to_state(1,0)] = 4*q
-        D[mdp.coor_to_state(1,1)] = 4*q
-        D[mdp.coor_to_state(2,2)] = 1*q
-        D[mdp.coor_to_state(0,2)] = 2*q
-        D[mdp.coor_to_state(1,2)] = 2*q
-        D[mdp.coor_to_state(2,0)] = 2*q
-        D[mdp.coor_to_state(2,1)] = 2*q
-        t.assert_allclose(D, infer_from_start(mdp, 0, 3, T=2,
-            verbose_return=False, cached_action_probs=p))
-
-        t.assert_allclose([D0, D1, D2], infer_from_start(mdp, 0, 3, T=2,
+        t.assert_allclose([D0, D1], infer_from_start(mdp, 0, 3, T=1,
             cached_action_probs=p, verbose_return=True)[0])
+
+    # Closely related to `test_clockwise` in test_hardmax.py
+    def test_clockwise_multistep(self):
+        g = GridWorldMDP(2, 2)
+        A = g.coor_to_state(0, 1)
+        B = g.coor_to_state(1, 1)
+        C = g.coor_to_state(1, 0)
+        D = g.coor_to_state(0, 0)
+
+        P = np.zeros([g.S, g.A])
+        P[A, g.Actions.RIGHT] = 1
+        P[B, g.Actions.DOWN] = 1
+        P[C, g.Actions.LEFT] = 1
+        P[D, g.Actions.UP] = 1
+
+        res = infer_simple(g, A, 0, T=4, action_prob=P)
+
+        expect = np.zeros([5, 4])
+        expect[0, A] = 1
+        expect[1, B] = 1
+        expect[2, C] = 1
+        expect[3, D] = 1
+        expect[4, A] = 1
+
+        t.assert_allclose(res, expect)
 
     def test_infer_multidest_no_crash(self):
         mdp = GridWorldMDP(3, 3)
@@ -63,4 +137,5 @@ class TestInferFromStart(TestCase):
         D[mdp.coor_to_state(1,0)] = 1 / mdp.A
         D[mdp.coor_to_state(1,1)] = 1 / mdp.A
         traj = [(4,4)]
-        infer(mdp, traj, [0, 1], T=1, verbose_return=False, cached_action_probs=p)
+        infer(mdp, traj, [0, 1], T=1, verbose_return=False,
+                cached_action_probs=p)

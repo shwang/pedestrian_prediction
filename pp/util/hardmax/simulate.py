@@ -33,6 +33,7 @@ def simulate(mdp, initial_state, goal_state, beta=1, path_length=None):
     s = initial_state
     while len(traj) < path_length:
         a = sample_action(mdp, s, goal_state, beta=beta, cached_probs=P)
+        assert a is not None
         traj.append([s, a])
         if a == mdp.Actions.ABSORB:
             break
@@ -40,7 +41,8 @@ def simulate(mdp, initial_state, goal_state, beta=1, path_length=None):
             s = mdp.transition(s, a)
     return traj
 
-def sample_action(mdp, state, goal, beta=1, cached_probs=None):
+def sample_action(mdp, state, goal, beta=1, cached_probs=None,
+        absorb_only_on_goal=True):
     """
     Choose an action probabilistically, like a softmax agent would.
     Params:
@@ -63,7 +65,14 @@ def sample_action(mdp, state, goal, beta=1, cached_probs=None):
     else:
         P = action_probabilitilies(mdp, goal, beta=beta)
 
-    return np.random.choice(range(mdp.A), p=P[state])
+    if absorb_only_on_goal:
+            choice = mdp.Actions.ABSORB
+            if state != goal:
+                while choice == mdp.Actions.ABSORB:
+                    choice = np.random.choice(range(mdp.A), p=P[state])
+    else:
+        choice = np.random.choice(range(mdp.A), p=P[state])
+    return choice
 
 def _main():
     from util import display

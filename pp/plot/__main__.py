@@ -1,9 +1,9 @@
 import common
 import common_multi
 import common_forget
+import study_traj
 
-if __name__ == '__main__':
-    common_multi.multidest_traj_inf("diag-fickle", "diag+bot", N=20,
-            epsilon=0.15,
-            title=("Baysian filter on D_t: t={t}, epsilon={epsilon}, traj={traj}"),
-            hmm=True, save_png=True)
+# study_traj.histogram_beta_est(R=-1, true_beta=0.8, samples=1000, N=15, path_length=3)
+# study_traj.histogram_beta_est(R=-1, true_beta=0.8, samples=1000, N=15, path_length=5)
+# study_traj.histogram_beta_est(R=-1, true_beta=0.8, samples=1000, N=15, path_length=10)
+study_traj.histogram_beta_est(R=-1, true_beta=0.8, samples=1000, N=15, path_length=15)

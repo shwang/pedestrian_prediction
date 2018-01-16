@@ -9,7 +9,8 @@ def normalize(vec):
     x = np.array(vec)
     return x/sum(x)
 
-def display(mdp, traj, init_state, goal_state, overlay=True):
+def display(mdp, traj, init_state, goal_state, traj_aux=[],
+        failures=[], overlay=True):
     init_state = mdp.state_to_coor(init_state)
     goal_state = mdp.state_to_coor(goal_state)
 
@@ -19,21 +20,57 @@ def display(mdp, traj, init_state, goal_state, overlay=True):
     else:
         visited.add(init_state)
 
-    lines = []
+    visited_aux = set(mdp.state_to_coor(s) for s, a in traj_aux)
+    if len(traj_aux) > 0:
+        # import pdb; pdb.set_trace()
+        visited_aux.add(mdp.state_to_coor(mdp.transition(*traj_aux[-1])))
+
+    failures = set(mdp.state_to_coor(s) for s in failures)
+
+    lines = [(['.'] * mdp.rows) for _ in xrange(mdp.cols)]
     for c in xrange(mdp.cols):
-        line = ['_'] * mdp.rows
+        line = lines[c]
         for r in xrange(mdp.rows):
-            if (r, c) in visited:
+            if (r, c) in failures:
+                line[r] = 'X'
+            elif (r, c) in visited:
                 line[r] = '#'
+            elif (r, c) in visited_aux:
+                line[r] = '^'
         if overlay:
             if c == init_state[1]:
                 line[init_state[0]] = 'A' if init_state in visited else 'a'
             if c == goal_state[1]:
                 line[goal_state[0]] = 'G' if goal_state in visited else 'g'
-        lines.append(line)
 
     for l in reversed(lines):
-        print l
+        print " ".join(l)
+
+def display_plan(mdp, plan, init_state, goal_state, heat_nums):
+    init_state = mdp.state_to_coor(init_state)
+    goal_state = mdp.state_to_coor(goal_state)
+
+    visited = set(mdp.state_to_coor(s) for s, a in plan)
+    if len(plan) > 0:
+        visited.add(mdp.state_to_coor(mdp.transition(*plan[-1])))
+    else:
+        visited.add(init_state)
+
+    # TODO: Try unrolling an np string array
+    lines = [(['.'] * mdp.rows) for _ in xrange(mdp.cols)]
+    for (s, a), heat in zip(plan, heat_nums):
+        assert 0 <= heat <= 9, heat
+        r, c = mdp.state_to_coor(s)
+        lines[r][c] = str(heat)
+
+    marker = 'A' if init_state in visited else 'a'
+    lines[init_state[0]][init_state[1]] = marker
+
+    marker = 'G' if goal_state in visited else 'g'
+    lines[goal_state[0]][goal_state[1]] = marker
+
+    for l in reversed(lines):
+        print " ".join(l)
 
 def build_traj_from_actions(g, init_state, actions):
     s = init_state

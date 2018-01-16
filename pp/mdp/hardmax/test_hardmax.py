@@ -99,3 +99,65 @@ class TestTrajProb(TestCase):
         fake_prob[2, 2] = 0.5
         t.assert_equal(trajectory_probability(self.g, 2, traj=traj,
                     cached_act_probs=fake_prob), 0.125)
+
+
+class TestTransitionProbabilities(TestCase):
+
+    def test_empty(self):
+        g = GridWorldMDP(5,5)
+        g.set_goal(4)  # meaningless, a vestigal necessity for now. XXX
+
+        act_probs = np.zeros([g.S, g.A])
+        res = transition_probabilities(g, act_probs_cached=act_probs)
+        expect = np.zeros([g.S, g.S])
+
+        t.assert_equal(res, expect)
+
+    def test_simple(self):
+        g = GridWorldMDP(5,5)
+        g.set_goal(4)
+
+        s = g.coor_to_state(0, 0)
+        s_right = g.coor_to_state(1, 0)
+        s_up = g.coor_to_state(0, 1)
+
+        act_probs = np.zeros([g.S, g.A])
+        act_probs[s, g.Actions.RIGHT] = 0.5
+        act_probs[s, g.Actions.UP] = 0.5
+
+        res = transition_probabilities(g, act_probs_cached=act_probs)
+        expect = np.zeros([g.S, g.S])
+
+        expect[s_right, s] = 0.5
+        expect[s_up, s] = 0.5
+
+        t.assert_allclose(res, expect)
+
+    def test_clockwise(self):
+        g = GridWorldMDP(2, 2)
+        A = g.coor_to_state(0, 1)
+        B = g.coor_to_state(1, 1)
+        C = g.coor_to_state(1, 0)
+        D = g.coor_to_state(0, 0)
+
+        P = np.zeros([g.S, g.A])
+        P[A, g.Actions.RIGHT] = 1
+        P[B, g.Actions.DOWN] = 1
+        P[C, g.Actions.LEFT] = 1
+        P[D, g.Actions.UP] = 1
+
+        expect = np.zeros([g.S, g.S])
+        M = expect.T
+        M[A, B] = 1
+        M[B, C] = 1
+        M[C, D] = 1
+        M[D, A] = 1
+
+        res = transition_probabilities(g, act_probs_cached=P)
+
+        # x = np.zeros(4)
+        # x[A] = 1
+        # x_prime = np.matmul(expect, x)
+        # x_prime_res = np.matmul(res, x)
+        # import pdb; pdb.set_trace()
+        t.assert_allclose(res, expect)

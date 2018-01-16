@@ -15,21 +15,29 @@ class TestCollideProbs(TestCase):
         cls.traj = [(0, 1), (1, 2), (3, 4)]
 
     def test_radius_0(self):
-        g = GridWorldMDP(5, 5)
-        state_probs = np.ones([1, g.S])/g.S
-        cp = CollideProbs(g, T=0, collide_radius=0, traj = self.traj,
+        g_R = GridWorldMDP(5, 5)
+        g_H = GridWorldMDP(5, 5)
+        ctx = HRContext(g_R=g_R, goal_R=20, g_H=g_H, goal_H=2,
+                collide_radius=0, collide_penalty=10, traj_H=[(1, 2)],
+                start_H=0)
+
+        state_probs = np.ones([1, g_H.S])/g_H.S
+        cp = CollideProbs(ctx=ctx, T=0, traj = self.traj,
                 state_probs_cached=np.copy(state_probs))
-        collide_probs = np.empty([1, g.S])
+        collide_probs = np.empty([1, g_H.S])
 
-        for s in range(g.S):
+        for s in range(g_H.S):
             collide_probs[0, s] = cp.get(0, s)
-        rows, cols = g.rows, g.cols
+        rows, cols = g_H.rows, g_H.cols
         t.assert_allclose(
-                state_probs.reshape(1, rows, cols),
-                collide_probs.reshape(1, rows, cols))
-
+                state_probs.reshape(1, rows, cols), collide_probs.reshape(1, rows, cols)) 
     def test_radius_1(self):
-        g = GridWorldMDP(3, 3)
+        g_R = GridWorldMDP(3, 3)
+        g_H = GridWorldMDP(3, 3)
+        ctx = HRContext(g_R=g_R, goal_R=1, g_H=g_H, goal_H=2,
+                collide_radius=1, collide_penalty=10, traj_H=[(1, 2)],
+                start_H=0)
+
         state_probs = np.array(
                 [[1/3, 0, 0],
                 [0, 0, 0],
@@ -39,40 +47,16 @@ class TestCollideProbs(TestCase):
                 [2/3, 1, 1/3],
                 [1/3, 2/3, 1/3]])
 
-        cp = CollideProbs(g, T=0, collide_radius=1, traj=self.traj,
+        cp = CollideProbs(ctx, T=0, traj=self.traj,
                 state_probs_cached=np.copy(state_probs))
-        collide_probs = np.empty([1, g.S])
-        for s in range(g.S):
+        collide_probs = np.empty([1, g_H.S])
+        for s in range(g_H.S):
             collide_probs[0, s] = cp.get(0, s)
-        rows, cols = g.rows, g.cols
+        rows, cols = g_H.rows, g_H.cols
 
         t.assert_allclose(
                 collide_probs.reshape(1, rows, cols),
                 expected_probs.reshape(1, rows, cols))
-
-class TestAStarNode(TestCase):
-    def test_init(self):
-        g = GridWorldMDP(3, 3)
-        s = 2
-        node = AStarNode(g, s)
-        self.assertEqual(node.s, s)
-        self.assertEqual(node.backward_cost, 0)
-        self.assertEqual(node.traj, tuple())
-        self.assertEqual(node.t, 0)
-
-    def test_child(self):
-        g = GridWorldMDP(3, 3)
-        s = 0
-        node = AStarNode(g, s)
-
-        a = g.Actions.UP
-        s_prime = g.transition(s, a)
-        new_cost = 5
-        child = node.make_child(a, new_cost)
-        self.assertEqual(child.t, 1)
-        self.assertEqual(child.backward_cost, new_cost)
-        self.assertEqual(child.s, s_prime)
-        self.assertEqual(child.traj, ((s, a),))
 
 class TestRobotPlanner(TestCase):
 
@@ -87,14 +71,30 @@ class TestRobotPlanner(TestCase):
     #     plan = robot_planner(g_R, s, g_H, traj=[], start_H=2)
     #     t.assert_equal(plan, [])
 
-    def test_long_no_crash(self):
+    @classmethod
+    def setUpClass(cls):
         g_R = GridWorldMDP(6, 6)
         g_R.set_goal(35)
         g_H = GridWorldMDP(6, 6)
         g_H.set_goal(2)
-        # The following calls should not crash.
-        ctx = HRContext(g_R=g_R, goal_R=35, g_H=g_H, goal_H=2,
+        cls.ctx = HRContext(g_R=g_R, goal_R=35, g_H=g_H, goal_H=2,
                 collide_radius=1, collide_penalty=10, traj_H=[(1, 2)],
                 start_H=0)
-        robot_planner(ctx=ctx, state_R=0, traj_H=[])
-        robot_planner(ctx=ctx, state_R=0, traj_H=[(1, 2)])
+        cls.traj = [(0, 1), (1, 2), (3, 4)]
+
+    def test_long_no_crash(self):
+        # The following calls should not crash.
+        robot_planner_vanilla(ctx=self.ctx, state_R=0, traj_H=[])
+        robot_planner_vanilla(ctx=self.ctx, state_R=0, traj_H=[(1, 2)])
+
+    def test_long_no_crash_fixed(self):
+        robot_planner_fixed(ctx=self.ctx, state_R=0, traj_H=[])
+        robot_planner_fixed(ctx=self.ctx, state_R=0, traj_H=[(1, 2)])
+
+    def test_long_no_crash_bayes(self):
+        betas = [0.1, 1, 2]
+        priors = [0.3, 0.4, 0.3]
+        robot_planner_bayes(ctx=self.ctx, betas=betas, priors=priors, state_R=0,
+                traj_H=[])
+        robot_planner_bayes(ctx=self.ctx, betas=betas, priors=priors, state_R=0,
+                traj_H=[(1, 2)])

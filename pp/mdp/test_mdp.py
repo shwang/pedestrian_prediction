@@ -134,3 +134,16 @@ class TestGridWorldMDP(TestCase):
         self.assert_reward(g, 1, 1, Actions.DOWN_LEFT, -1)
         self.assert_reward(g, 1, 0, Actions.LEFT, -1)
         self.assert_reward(g, 1, 1, Actions.UP, 1.5)
+
+    def test_disallow_diag(self):
+        g = GridWorldMDP(3, 3, {(0, 0): -1, (0, 1): 1, (1, 1): 2, (1, 0): 3},
+                default_reward=1.5, euclidean_rewards=False, disallow_diag=True)
+        self.assert_reward(g, 0, 0, Actions.ABSORB, ni)
+        self.assert_reward(g, 0, 0, Actions.UP, 1)
+        self.assert_reward(g, 0, 0, Actions.UP_RIGHT, ni)
+        self.assert_reward(g, 0, 0, Actions.RIGHT, 3)
+        self.assert_reward(g, 2, 2, Actions.DOWN_LEFT, ni)
+        self.assert_reward(g, 1, 1, Actions.DOWN_LEFT, ni)
+        self.assert_reward(g, 1, 0, Actions.LEFT, -1)
+        self.assert_reward(g, 1, 1, Actions.UP, 1.5)
+

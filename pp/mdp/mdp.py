@@ -11,9 +11,9 @@ class MDP(object):
             A [int]: The number of actions.
             rewards [np.ndarray]: a SxA array where rewards[s, a] is the reward
                 received from taking action a at state s.
-            transition [function]: The state transition function for the deterministic
-                MDP. transition(s, a) returns the state that results from taking action
-                a at state s.
+            transition [function]: The state transition function for the
+                deterministic MDP. transition(s, a) returns the state that
+                results from taking action a at state s.
         """
         assert isinstance(S, int), S
         assert isinstance(A, int), A
@@ -38,28 +38,31 @@ class GridWorldMDP(MDP):
         DOWN_RIGHT = 7
         ABSORB = 8
 
-    def __init__(self, rows, cols, reward_dict={}, goal_state=None, default_reward=-5,
-            euclidean_rewards=True, allow_wait=False):
+    def __init__(self, rows, cols, reward_dict={}, goal_state=None,
+            default_reward=-1, euclidean_rewards=True, allow_wait=False,
+            disallow_diag=False):
         """
         An agent in a GridWorldMDP can move between adjacent/diagonal cells.
 
-        If the agent chooses an illegal action it receives a float('-inf') reward
-        and will stay in place.
+        If the agent chooses an illegal action it receives a float('-inf')
+        reward and will stay in place.
 
         Params:
             rows [int]: The number of rows in the grid world.
             cols [int]: The number of columns in the grid world.
-            reward_dict [dict]: Maps (r, c) to _reward. In the GridWorldMDP, transitioning
-                to (r, c) will grant the reward _reward.
+            reward_dict [dict]: Maps (r, c) to _reward. In the GridWorldMDP,
+                transitioning to (r, c) will grant the reward _reward.
             goal_state [int]: (optional) The goal state at which ABSORB is legal
                 and costs 0.
-            default_reward [float]: (optional) Every reward not set by reward_dict
-                will receive this default reward instead.
-            euclidean_rewards [bool]: (optional) If True, then scale rewards for moving
-                diagonally by sqrt(2).
+            default_reward [float]: (optional) Every reward not set by
+                reward_dict will receive this default reward instead.
+            euclidean_rewards [bool]: (optional) If True, then scale rewards for
+                moving diagonally by sqrt(2).
             allow_wait [bool]: (optional) If False, then the ABSORB action is
                 illegal in all states except the goal. If True, then the ABSORB
                 action costs default_reward in states other than the goal.
+            disallow_diag [bool]: (optional) Set to True to make diagonal moves
+                illegal. This is useful reducing the dimensionality of search.
         """
         assert rows > 0
         assert cols > 0
@@ -82,12 +85,17 @@ class GridWorldMDP(MDP):
         self.reverse_neighbors = [[] for _ in xrange(S)]
 
         self.transition_cached = np.empty([S, A], dtype=int)
+        self.transition_cached_nd1d = np.empty(S*A, dtype=int)
+        self.transition_cached_l = [0] *(S*A)
         self.allow_wait = allow_wait
+        self.disallow_diag = disallow_diag
 
         for s in xrange(S):
             for a in xrange(A):
-                s_prime, illegal = self._transition_helper(s, a, alert_illegal=True)
+                s_prime, illegal = self._transition_helper(s, a,
+                        alert_illegal=True)
                 self.transition_cached[s, a] = s_prime
+                self.transition_cached_l[a + s*A] = s_prime
                 coor = self.state_to_coor(s_prime)
                 if not illegal:
                     if coor in reward_dict:
@@ -96,6 +104,8 @@ class GridWorldMDP(MDP):
                     self.reverse_neighbors[s_prime].append((a, s))
                 else:
                     rewards[s, a] = -np.inf
+
+        self.transition_cached_t = tuple(self.transition_cached_l)
 
         if euclidean_rewards:
             for a in self.diagonal_actions:
@@ -148,7 +158,9 @@ class GridWorldMDP(MDP):
             raise BaseException(u"undefined action {}".format(a))
 
         illegal = False
-        if r_prime < 0 or r_prime >= self.rows or c_prime < 0 or c_prime >= self.cols:
+        if r_prime < 0 or r_prime >= self.rows or \
+                c_prime < 0 or c_prime >= self.cols or \
+                (self.disallow_diag and a in self.diagonal_actions):
             r_prime, c_prime = r, c
             illegal = True
 
@@ -194,8 +206,8 @@ class GridWorldMDP(MDP):
             c [int]: The state's column.
 
         Returns:
-            s [int]: The state number associated with the given coordinates in a standard
-                grid world.
+            s [int]: The state number associated with the given coordinates in
+                a standard grid world.
         """
         assert 0 <= r < self.rows, "invalid (rows, r)={}".format((self.rows, r))
         assert 0 <= c < self.cols, "invalid (cols, c)={}".format((self.cols, c))

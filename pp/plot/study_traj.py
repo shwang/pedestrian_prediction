@@ -1,12 +1,12 @@
 import numpy as np
 
 from .common import *
-from mdp import GridWorldMDP
-from util import sum_rewards, display, build_traj_from_actions
-from util.hardmax import simulate, sample_action
+from ..mdp import GridWorldMDP
+from ..util import sum_rewards, display, build_traj_from_actions
+from ..util.hardmax import simulate, sample_action
 from itertools import izip
 
-from parameters import inf_default
+from ..parameters import inf_default
 
 A = GridWorldMDP.Actions
 
@@ -27,7 +27,7 @@ def beta_versus(g, start, actions, goal, beta1, beta2, uid=0, title=None,
     subplot_titles=(
         "expected occupancies, beta={}".format(beta1),
         "expected occupancies, beta={}".format(beta2),
-        "abs difference in ex. occupancies"))
+        "abs difference in ex. occupancies")
 
 
 def shortest_paths_beta_hat(N=5, R=-0.3, min_beta=0.1, max_beta=1000,
@@ -55,32 +55,44 @@ def shortest_paths_beta_hat(N=5, R=-0.3, min_beta=0.1, max_beta=1000,
             z_min=min_beta, z_max=max_beta)
 
 
-def histogram_beta_est(N=30, R=-20, true_beta=10, min_beta=0.01, max_beta=100,
+def histogram_beta_est(N=50, R=-20, true_beta=10, min_beta=0.01, max_beta=50,
+        samples=200, path_length=None, save_png=False,
         inf_mod=inf_default):
     """Plot the frequency of beta_hat over every various simulated trajectories"""
     import plotly.graph_objs as go
     g = GridWorldMDP(N, N, {}, default_reward=R)
     start = 0
-    goal = model_goal = g.coor_to_state(N//2, N-1)
+    goal = model_goal = g.coor_to_state(N-1, N-1)
     model_goal = goal
 
     bt = inf_mod.beta
 
     beta_hats=[]
-    for i in range(200):
-        trajectory = simulate(g, start, goal, beta=true_beta)
+    for i in range(samples):
+        if i % 100 == 0:
+            print i
+        trajectory = simulate(g, start, goal, beta=true_beta,
+                path_length=path_length)
+        # print("#{}".format(len(trajectory)))
         beta = bt.binary_search(g, trajectory, model_goal,
-                verbose=True, min_beta=min_beta, max_beta=max_beta)
+                max_iters=10,
+                verbose=False, min_beta=min_beta, max_beta=max_beta)
         beta_hats.append(beta)
 
     data = [go.Histogram(x=beta_hats, xbins=dict(
-        start=-4, end=16, size=0.5),)]
-    show_plot(data)
+        start=-4, end=50, size=0.1),)]
+    title =("Estimating beta for 1000 trajectories produced by a Boltzman agent"
+     + "<br>traj_length={} beta_star={}")
+    title = title.format(path_length, true_beta)
 
-    mean = np.sum(beta_hats)
-    mean_sq = np.sum(np.square(beta_hats))
-    variance = mean_sq - mean*mean
-    print "mean={}, variance={}".format(mean, variance)
+
+    mean = np.mean(beta_hats)
+    std = np.std(beta_hats)
+    med = np.median(beta_hats)
+    details = "mean={:.2f}, median={:.2f}, std_dev={:.2f}".format(mean, med, std)
+    print details
+    xtitle = "MLE beta ({details})".format(details=details)
+    show_plot(data, title=title, xtitle=xtitle, ytitle="count", save_png=True)
 
 
 def plot_traj_log_likelihood(g, traj, goal, title=None,

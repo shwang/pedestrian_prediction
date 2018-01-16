@@ -1,6 +1,6 @@
 import sys
 
-# TODO: Figure this crazy import mess another day.
+# XXX: Figure this crazy import mess another day.
 # I'm guessing this is because hardmax.occupancy
 # which is part of inference.hardmax, is importing
 # this module.
@@ -17,7 +17,7 @@ if 'pp.mdp.hardmax' in sys.modules:
 else:
     val_hardmax = sys.modules['pedestrian_prediction.pp.mdp.hardmax']
 
-val_default = val_euclid
+val_default = val_hardmax
 
 import inference.hardmax
 if 'pp.inference.hardmax' in sys.modules:

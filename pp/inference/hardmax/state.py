@@ -2,9 +2,50 @@ from __future__ import division
 
 import numpy as np
 import destination
+import beta as bt
 
 from ...parameters import val_default
 from ...util.args import unpack_opt_list
+
+def infer_bayes(g, dest, T, betas, traj=[], init_state=None, priors=None,
+        action_prob=None, verbose_return=False):
+    """
+    Calculate the expected state probabilties by taking a linear combination
+    over the state probabilities associated with each beta in `betas`. The
+    weights in this linear combination correspond to the posterior probability
+    of each beta given that `beta_star` is actually in `betas` and the observed
+    trajectory `traj`.
+
+    Returns:
+        occ_res [np.ndarray]: A (T+1 x S) array, where the `t`th entry is the
+            probability of state S in `t` timesteps from now.
+    Verbose Returns:
+        occ_all [np.ndarray]: A (|betas| x T+1 x S) array, where the `b`th entry
+            is the (T+1 x S) expected states probabilities if it were the case
+            that `beta_star == beta[b]`.
+        P_betas [np.ndarray]: A (|betas|) dimension array, where the `b`th entry
+            is the posterior probability associated with `betas[b]`.
+    """
+    assert len(traj) > 0 or init_state is not None
+    if init_state is None:
+        init_state = traj[0][0]
+
+    assert betas is not None
+    P_beta = bt.calc_posterior_over_set(g, traj=traj, goal=dest, betas=betas,
+            priors=priors)
+
+    occ_all = np.empty([len(betas), T+1, g.S])
+    occ_res = np.zeros([T+1, g.S])
+    for i, beta in enumerate(betas):
+        occ_all[i] = infer_simple(g, init_state, dest=dest, T=T,
+                action_prob=action_prob, beta=beta)
+        occ_res = np.add(occ_res, occ_all[i] * P_beta[i], out=occ_res)
+
+    if verbose_return:
+        return occ_res, occ_all, P_beta
+    else:
+        return occ_res
+
 
 def infer_simple(g, init_state, dest, T, beta=1, action_prob=None,
         val_mod=val_default):
@@ -15,19 +56,17 @@ def infer_simple(g, init_state, dest, T, beta=1, action_prob=None,
     Return the probability the agent is in each state during each timestep
     as a 2D array of dimension (T+1, g.S).
     """
-    if action_prob is None:
-        action_prob = val_mod.action_probabilities(g, dest, beta=beta)
+    assert init_state is not None
+    g.set_goal(dest)
+    M = val_mod.transition_probabilities(g, beta=beta,
+            act_probs_cached=action_prob)
 
     P_t = np.zeros([T+1, g.S])
     P_t[0][init_state] = 1
     for t in range(1, T+1):
         P = P_t[t-1]
         P_prime = P_t[t]
-        for s in range(g.S):
-            if P[s] == 0:
-                continue
-            for a, s_prime in g.neighbors[s]:
-                P_prime[s_prime] += P[s] * action_prob[s, a]
+        P_prime[:] = np.matmul(M, P)
     return P_t
 
 

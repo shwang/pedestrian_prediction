@@ -5,6 +5,7 @@ class HRContext(object):
     def __init__(self, g_H=None, g_R=None, traj_H=None, traj_R=None,
             start_H=None, start_R=None, goal_H=None, goal_R=None,
             collide_radius=None, collide_penalty=None, N=None,
+            mode=None,
             ):
         self.g_H = g_H
         self.g_R = g_R
@@ -17,6 +18,7 @@ class HRContext(object):
         self.collide_radius = collide_radius
         self.collide_penalty = collide_penalty
         self.N = N
+        self.mode = mode
 
 
     def cfg_mode(self, mode, N):

@@ -3,10 +3,10 @@ import numpy as np
 import Queue
 
 from ..softact_shared import q_values as _q_values
-from ..softact_shared import action_probabilities \
-        as _action_probabilities
-from ..softact_shared import trajectory_probability \
-        as _trajectory_probability
+from ..softact_shared import action_probabilities as _action_probabilities
+from ..softact_shared import transition_probabilities \
+        as _transition_probabilities
+from ..softact_shared import trajectory_probability as _trajectory_probability
 
 def forwards_value_iter(mdp, goal_state, *args, **kwargs):
     kwargs["forwards"] = True
@@ -76,6 +76,11 @@ def q_values(mdp, goal_state):
 def action_probabilities(mdp, goal_state, **kwargs):
     return _action_probabilities(mdp, goal_state, q_values, **kwargs)
 
+def transition_probabilities(g, **kwargs):
+    return _transition_probabilities(g,
+            action_probabilities=action_probabilities, **kwargs)
+
 def trajectory_probability(*args, **kwargs):
     return _trajectory_probability(*args,
             action_probabilities=action_probabilities, **kwargs)
+

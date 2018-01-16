@@ -22,6 +22,21 @@ def infer_simple(g, init_state, dest, T, beta=1, action_prob=None,
     return D
 
 
+def infer_bayes(g, dest, T, betas, traj=[], init_state=None, priors=None,
+        action_prob=None, val_mod=val_default, verbose_return=False):
+    assert betas is not None
+    occ_res, occ_all, P_beta = state.infer_bayes(g, dest, T, betas, traj=[],
+            init_state=init_state,
+            priors=priors, action_prob=action_prob, verbose_return=True)
+    D = np.sum(occ_res[1:], axis=0)
+    D[dest] = 1  # This value is fixed.
+
+    if verbose_return:
+        return D, occ_res, occ_all, P_beta
+    else:
+        return D
+
+
 def infer_from_start(g, init_state, dest_or_dests, dest_probs=None,
         T=None, verbose=False, beta_or_betas=1, cached_action_probs=None,
         verbose_return=False):

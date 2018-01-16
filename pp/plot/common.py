@@ -130,11 +130,11 @@ def subplots(subplot_list, title_list, shapes_list=[], title=None,
         for t in subplot:
             fig.append_trace(t, 1, i+1)
 
-    show_plot(fig, save_png, **kwargs)
+    show_fig(fig, save_png, **kwargs)
 
 
 uid_pointer = [100]
-def show_plot(fig, save_png=False, delay=3.2):
+def show_fig(fig, save_png=False, delay=3.2):
     uid_pointer[0] += 1
     uid = uid_pointer[0]
     if not save_png:
@@ -146,6 +146,12 @@ def show_plot(fig, save_png=False, delay=3.2):
         if delay is not None:
             import time
             time.sleep(delay)
+
+def show_plot(data, title=None, xtitle=None, ytitle=None, **kwargs):
+    layout = go.Layout(title=title, xaxis=dict(title=xtitle),
+            yaxis=dict(title=ytitle))
+    fig = go.Figure(data=data, layout=layout)
+    show_fig(fig, **kwargs)
 
 
 def _occ_starter(N, R, mode):

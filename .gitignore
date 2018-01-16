@@ -4,3 +4,6 @@
 *.html
 tags
 output/
+.ipynb_checkpoints
+*.ipynb
+*.lprof
