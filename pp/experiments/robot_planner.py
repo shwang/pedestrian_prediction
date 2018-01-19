@@ -183,7 +183,6 @@ def node_key(node):
 
 def node_child(node, g, action, backward_cost, tuple_ref, A, verbose):
     assert backward_cost >= backward_cost
-
     ### EQUIVALENT, but much faster than g.transition()
     s_prime = tuple_ref[A * node[NODE_S] + action]
     # s_prime = g.transition(node[NODE_S], action)

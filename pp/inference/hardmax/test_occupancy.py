@@ -32,6 +32,7 @@ class TestInferBayesBeta(TestCase):
         betas = [0.1, 1]
         init_state = g.coor_to_state(1, 1)
         traj = [(init_state, g.Actions.DOWN_RIGHT)]
+        s_prime = g.transition(init_state, g.Actions.DOWN_RIGHT)
         dest = g.coor_to_state(3, 3)
         T = 0
 
@@ -42,7 +43,7 @@ class TestInferBayesBeta(TestCase):
         assert P_beta[0] < P_beta[1], P_beta
 
         expect = np.zeros([1, g.S])
-        expect[0, init_state] = 1
+        expect[0, s_prime] = 1
 
         for occ_beta in occ_all:
             t.assert_allclose(occ_beta, expect)
@@ -54,6 +55,7 @@ class TestInferBayesBeta(TestCase):
         betas = [0.1, 1, 10]
         init_state = g.coor_to_state(1, 1)
         traj = [(init_state, g.Actions.UP_RIGHT)]
+        s_prime = g.transition(init_state, g.Actions.UP_RIGHT)
         dest = g.coor_to_state(3, 3)
         T = 0
 
@@ -64,7 +66,7 @@ class TestInferBayesBeta(TestCase):
         assert P_beta[0] > P_beta[1] > P_beta[2], P_beta
 
         expect = np.zeros([1, g.S])
-        expect[0, init_state] = 1
+        expect[0, s_prime] = 1
 
         for occ_beta in occ_all:
             t.assert_allclose(occ_beta, expect)
@@ -139,3 +141,14 @@ class TestInferFromStart(TestCase):
         traj = [(4,4)]
         infer(mdp, traj, [0, 1], T=1, verbose_return=False,
                 cached_action_probs=p)
+
+class TestInferMultiDest(TestCase):
+    def test_different_beta(self):
+        g = GridWorldMDP(3, 3, euclidean_rewards=True)
+        D = np.zeros(9)
+        D[0] = 1
+        dest_list = [g.coor_to_state(2, 2), g.coor_to_state(0, 2)]
+        traj = [(g.coor_to_state(0, 0), g.Actions.UP_RIGHT)]
+        P, betas, dest_probs = infer(g, traj=traj, dest_or_dests=dest_list,
+                T=10)
+        assert betas[0] != betas[1]

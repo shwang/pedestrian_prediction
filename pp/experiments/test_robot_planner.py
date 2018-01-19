@@ -73,14 +73,15 @@ class TestRobotPlanner(TestCase):
 
     @classmethod
     def setUpClass(cls):
-        g_R = GridWorldMDP(6, 6)
+        g_R = cls.g_R = GridWorldMDP(6, 6)
         g_R.set_goal(35)
-        g_H = GridWorldMDP(6, 6)
+        g_H = cls.g_H = GridWorldMDP(6, 6)
         g_H.set_goal(2)
         cls.ctx = HRContext(g_R=g_R, goal_R=35, g_H=g_H, goal_H=2,
                 collide_radius=1, collide_penalty=10, traj_H=[(1, 2)],
                 start_H=0)
         cls.traj = [(0, 1), (1, 2), (3, 4)]
+        cls.safe_traj_H = [(g_H.coor_to_state(3, 3), g_H.Actions.UP)]
 
     def test_long_no_crash(self):
         # The following calls should not crash.
@@ -96,5 +97,9 @@ class TestRobotPlanner(TestCase):
         priors = [0.3, 0.4, 0.3]
         robot_planner_bayes(ctx=self.ctx, betas=betas, priors=priors, state_R=0,
                 traj_H=[])
+        # TODO: recall that bayes gives all nan in collide probabilities if
+        #       traj_H contains illegal moves. Think about fixing this?
+        #
+        #       Example: change traj_H back to (1, 2)
         robot_planner_bayes(ctx=self.ctx, betas=betas, priors=priors, state_R=0,
-                traj_H=[(1, 2)])
+                traj_H=self.safe_traj_H)

@@ -22,8 +22,6 @@ def simulate_bayes(ctx, betas, priors=None, k=None, verbose=False, **kwargs):
     with Human in the scenario described by `ctx`.
     Returns: An instance of `SimResultBayes`.
     """
-    # XXX: Add trajectory forget support via k later.
-    #       Probably also requires more changes to this function.
     res = SimResultBayes(ctx=ctx, betas=betas, priors=priors, k=k)
 
     def planning_callback(ctx, res, tr_H, state_R):
