@@ -70,8 +70,8 @@ def _value_iter(mdp, s, forwards, beta=1, verbose=False):
 
     return -V
 
-def q_values(mdp, goal_state):
-    return _q_values(mdp, goal_state, forwards_value_iter)
+def q_values(mdp, goal_state, **kwargs):
+    return _q_values(mdp, goal_state, forwards_value_iter, **kwargs)
 
 def action_probabilities(mdp, goal_state, **kwargs):
     return _action_probabilities(mdp, goal_state, q_values, **kwargs)

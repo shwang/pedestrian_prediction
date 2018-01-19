@@ -49,22 +49,23 @@ class TestQValues(TestCase):
         Q[1][Actions.LEFT] = -1
         Q[1][Actions.RIGHT] = -11
         Q[2][Actions.LEFT] = -2
-        t.assert_allclose(Q, q_values(g, 0))
+        t.assert_allclose(Q, q_values(g, 0, goal_stuck=True))
 
         # V = [-1, 0, -1]
         Q.fill(-np.inf)
         Q[0][Actions.RIGHT] = -1
         Q[1][Actions.ABSORB] = 0
         Q[2][Actions.LEFT] = -1
-        t.assert_allclose(Q, q_values(g, 1))
+        t.assert_allclose(Q, q_values(g, 1, goal_stuck=True))
 
         # V = [-10, -9, 0]
         Q.fill(-np.inf)
         Q[0][Actions.RIGHT] = -10
         Q[1][Actions.LEFT] = -11
         Q[1][Actions.RIGHT] = -9
+        Q[2][Actions.LEFT] = -10
         Q[2][Actions.ABSORB] = 0
-        t.assert_allclose(Q, q_values(g, 2))
+        t.assert_allclose(Q, q_values(g, 2, goal_stuck=False))
 
 class TestActionProbabilities(TestCase):
     @classmethod
@@ -80,6 +81,24 @@ class TestActionProbabilities(TestCase):
         q_cached = np.zeros([3,3])
         P = action_probabilities(self.g, 3, q_cached=q_cached)
         t.assert_allclose(P, np.ones([3,3])/3)
+
+    def test_goal_state_forces_absorb(self):
+        g = self.g
+        s = g.coor_to_state(3, 3)
+        P = action_probabilities(g, goal_state=s, goal_stuck=True)
+
+        a = g.Actions.UP
+
+        assert P[s, a] == 0
+
+    def test_goal_state_allows_nonabsorb(self):
+        g = self.g
+        s = g.coor_to_state(3, 3)
+        P = action_probabilities(g, goal_state=s)
+
+        a = g.Actions.UP
+
+        assert P[s, a] > 0
 
 class TestTrajProb(TestCase):
     @classmethod

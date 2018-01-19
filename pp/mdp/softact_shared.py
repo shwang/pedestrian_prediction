@@ -2,7 +2,7 @@ from __future__ import division
 import numpy as np
 from sklearn.preprocessing import normalize
 
-def q_values(mdp, goal_state, forwards_value_iter):
+def q_values(mdp, goal_state, forwards_value_iter, goal_stuck=False):
     """
     Calculate a hardmax agent's Q values for each state action pair.
     For hardmax forwards_value_iter only. In other words, these q_values
@@ -10,11 +10,15 @@ def q_values(mdp, goal_state, forwards_value_iter):
 
     Params:
         mdp [GridWorldMDP]: The MDP.
-        goal_state [int]: The goal state, where the agent is forced to choose
-            the absorb action, and whose state value is 0.
+        goal_state [int]: The goal state, where the agent is allowed to choose
+            a 0-cost ABSORB action. The goal state's value is 0.
+        forwards_value_iter [fn]: A function whose output is the value of each
+            state.
+        goal_stuck [bool]: If this is True, then all actions other than ABSORB
+            are illegal in the goal_state.
     """
-    if goal_state in mdp.q_cache:
-        return np.copy(mdp.q_cache[goal_state])
+    if (goal_state, goal_stuck) in mdp.q_cache:
+        return np.copy(mdp.q_cache[(goal_state, goal_stuck)])
 
     mdp.set_goal(goal_state)
     V = forwards_value_iter(mdp, goal_state)
@@ -24,30 +28,38 @@ def q_values(mdp, goal_state, forwards_value_iter):
     for s in range(mdp.S):
         if s == goal_state:
             Q[s, mdp.Actions.ABSORB] = 0
-        else:
-            for a in range(mdp.A):
-                Q[s,a] = mdp.rewards[s,a] + V[mdp.transition(s,a)]
+            if goal_stuck:
+                continue
+        # TODO:
+        # For the purposes of Jaime/Andrea's demo, I am allowing non-ABSORB
+        # actions at the goal.
+        #
+        # My simulations might break if human moves off this square.
+        # This is something worth thinking about. XXX
+        for a in range(mdp.A):
+            Q[s,a] = mdp.rewards[s,a] + V[mdp.transition(s,a)]
     assert Q.shape == (mdp.S, mdp.A)
 
-    mdp.q_cache[goal_state] = Q
+    mdp.q_cache[(goal_state, goal_stuck)] = Q
     return np.copy(Q)
 
 # TODO: get rid of manualy goal-setting
-def action_probabilities(mdp, goal_state, q_values, beta=1, q_cached=None):
+def action_probabilities(mdp, goal_state, q_values, beta=1, q_cached=None,
+        **kwargs):
     """
     At each state, calculate the softmax probability of each action
     using hardmax Q values.
 
     Params:
         mdp [GridWorldMDP]: The MDP.
-        goal_state [int]: The goal state. At the goal state, the agent
-            always chooses the ABSORB action at no cost.
+        goal_state [int]: The goal state, where the agent is allowed to choose
+            a 0-cost ABSORB action. The goal state's value is 0.
     """
     assert beta > 0, beta
     if q_cached is not None:
         Q = np.copy(q_cached)
     else:
-        Q = q_values(mdp, goal_state)
+        Q = q_values(mdp, goal_state, **kwargs)
 
     np.divide(Q, beta, out=Q)
     # Use amax to mitigate numerical errors
