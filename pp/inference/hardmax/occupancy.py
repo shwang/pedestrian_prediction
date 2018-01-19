@@ -25,7 +25,7 @@ def infer_simple(g, init_state, dest, T, beta=1, action_prob=None,
 def infer_bayes(g, dest, T, betas, traj=[], init_state=None, priors=None,
         action_prob=None, val_mod=val_default, verbose_return=False):
     assert betas is not None
-    occ_res, occ_all, P_beta = state.infer_bayes(g, dest, T, betas, traj=[],
+    occ_res, occ_all, P_beta = state.infer_bayes(g, dest, T, betas, traj=traj,
             init_state=init_state,
             priors=priors, action_prob=action_prob, verbose_return=True)
     D = np.sum(occ_res[1:], axis=0)

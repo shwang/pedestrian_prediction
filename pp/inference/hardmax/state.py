@@ -8,6 +8,7 @@ from ...parameters import val_default
 from ...util.args import unpack_opt_list
 
 def infer_bayes(g, dest, T, betas, traj=[], init_state=None, priors=None,
+        k=None,
         action_prob=None, verbose_return=False):
     """
     Calculate the expected state probabilties by taking a linear combination
@@ -27,12 +28,12 @@ def infer_bayes(g, dest, T, betas, traj=[], init_state=None, priors=None,
             is the posterior probability associated with `betas[b]`.
     """
     assert len(traj) > 0 or init_state is not None
-    if init_state is None:
-        init_state = traj[0][0]
+    if len(traj) > 0:
+        init_state = g.transition(*traj[-1])
 
     assert betas is not None
     P_beta = bt.calc_posterior_over_set(g, traj=traj, goal=dest, betas=betas,
-            priors=priors)
+            k=k, priors=priors)
 
     occ_all = np.empty([len(betas), T+1, g.S])
     occ_res = np.zeros([T+1, g.S])

@@ -10,11 +10,13 @@ from .robot_planner import *
 from .context import HRContext
 from scenarios import scenario_starter
 
+import plotly.graph_objs as go
+
 def distance(x1, y1, x2, y2):
     return max(abs(x1 - x2), abs(y1 - y2))
 
 
-def simulate_bayes(ctx, betas, priors=None, verbose=False, **kwargs):
+def simulate_bayes(ctx, betas, priors=None, k=None, verbose=False, **kwargs):
     """
     Calculate the actions, plans, and rewards for a Bayes beta Robot interacting
     with Human in the scenario described by `ctx`.
@@ -22,12 +24,11 @@ def simulate_bayes(ctx, betas, priors=None, verbose=False, **kwargs):
     """
     # XXX: Add trajectory forget support via k later.
     #       Probably also requires more changes to this function.
-    res = SimResultBayes(ctx=ctx, betas=betas, priors=priors)
+    res = SimResultBayes(ctx=ctx, betas=betas, priors=priors, k=k)
 
     def planning_callback(ctx, res, tr_H, state_R):
-        # TODO: Consider enabling k later. By accessing k stored in closure.
         plan, ex_cost, traj, P_beta = robot_planner_bayes(
-                ctx=ctx, state_R=state_R, betas=betas, priors=priors,
+                ctx=ctx, state_R=state_R, betas=betas, priors=priors, k=k,
                 traj_H=tr_H)
         assert plan is not None, "A* depth exceeded the preset limit"
         res.P_betas.append(P_beta)
@@ -48,22 +49,11 @@ def simulate_vanilla(ctx, k=None,
         the k parameter is set.
     """
 
-    if k is None:
-        res = SimResult(ctx=ctx, k=k)
-    else:
-        res = SimResultK(ctx=ctx, k=k)
-
-    # Dividing vanilla and fixed into two differnt functions looks like a bad
-    # idea now...
-
-    if k is None:
-        res = SimResult(ctx=ctx, k=k)
-    else:
-        res = SimResultK(ctx=ctx, k=k)
-
     if calc_beta:
+        res = SimResultMLE(ctx=ctx, k=k)
         planner = robot_planner_vanilla
     else:
+        res = SimResult(ctx=ctx, k=k)
         planner = robot_planner_fixed
 
     def planning_callback(ctx, res, tr_H, state_R, verbose=False):
@@ -151,7 +141,7 @@ def _sim_shared(ctx, res, planning_callback, max_steps=None, verbose=False):
 
 
 class SimResult(object):
-    def __init__(self, ctx=None, k=None, variant="vanilla"):
+    def __init__(self, ctx=None, k=None, variant="fixed"):
         self.ctx = ctx
         self.variant=variant
         self.is_bayes = False
@@ -168,7 +158,7 @@ class SimResult(object):
         self.collisions = []
 
 
-    TITLE = "{beta_text}<br> accumulated_reward={reward:.3f}"
+    TITLE = "Fixed [{beta_text}]<br> accumulated_reward={reward:.3f}"
     def gen_all_subplots(self, title=None, **kwargs):
         title = title or self.TITLE
         subplots = []
@@ -178,7 +168,7 @@ class SimResult(object):
         return subplots
 
 
-    def gen_subplot(self, t, title=None, occ_depth=50, inf_mod=inf_default):
+    def gen_subplot(self, t, title=None, occ_depth=10, inf_mod=inf_default):
         """
         Generate a subplot with human occupancy heat map, human and robot
         trajectories, robot plan, and starred goals.
@@ -195,12 +185,8 @@ class SimResult(object):
         g_H, g_R = ctx.g_H, ctx.g_R
         k = self.k
 
-        if t == 0:
-            tr_H = [(ctx.start_H, g_H.Actions.ABSORB)]
-            tr_R = [(ctx.start_R, g_H.Actions.ABSORB)]
-        else:
-            tr_H = ctx.traj_H[:t]
-            tr_R = self.traj_R[:t]
+        tr_H = ctx.traj_H[:t]
+        tr_R = self.traj_R[:t]
 
         if k is not None:
             if k == 0:
@@ -214,7 +200,13 @@ class SimResult(object):
         title = self.format(title, t)
 
         occupancies = self.get_occupancies(t, tr_H, occ_depth=occ_depth)
+
+        # Show a starting dot as starting trajectory instead of nothing.
+        if t == 0:
+            tr_H = [(ctx.start_H, g_H.Actions.ABSORB)]
+            tr_R = [(ctx.start_R, g_H.Actions.ABSORB)]
         data, shapes = self.make_graph_objs(t, tr_H, tr_R, occupancies)
+
         return title, data, shapes
 
     def get_occupancies(self, t, tr_H, occ_depth, inf_mod=inf_default):
@@ -222,11 +214,11 @@ class SimResult(object):
         g_H, g_R = ctx.g_H, ctx.g_R
         beta = self.betas[t]
         if t == 0:
-            occupancies = inf_mod.occupancy.infer_from_start(g_H, ctx.start_H,
+            occupancies = inf_mod.occupancy.infer_from_start(g_H, ctx.goal_H,
                     g_H.goal, T=occ_depth, beta_or_betas=beta,
                     verbose_return=False)
         else:
-            occupancies = inf_mod.occupancy.infer(g_H, tr_H, g_H.goal,
+            occupancies = inf_mod.occupancy.infer(g_H, tr_H, ctx.goal_H,
                     T=occ_depth, beta_or_betas=beta, verbose_return=False)
         return occupancies
 
@@ -275,17 +267,22 @@ class SimResult(object):
             beta_text = "beta={ideal_beta:.3f} [comp_beta={beta:.3f}]"
         else:
             beta_text = "beta={beta:.3f}"
+
+        if k > 0:
+            k_text = "(k={})".format(k)
+        else:
+            k_text = ""
+
         beta_text = beta_text.format(beta=beta, ideal_beta=ideal_beta)
         return s.format(beta_text=beta_text, value=-expected_cost,
-                reward=reward, k=k)
+                reward=reward, k_text=k_text)
 
 
-class SimResultK(SimResult):
+class SimResultMLE(SimResult):
     def __init__(self, *args, **kwargs):
-        SimResult.__init__(self, *args, variant="k", **kwargs)
+        SimResult.__init__(self, *args, variant="mle", **kwargs)
 
-    TITLE = "Traj Forgetting (k={k})<br>{beta_text}<br>" +\
-                "accumulated_reward={reward:.3f}"
+    TITLE = "MLE {k_text} [{beta_text}]<br> accumulated_reward={reward:.3f}"
 
 
 class SimResultBayes(SimResult):
@@ -295,11 +292,11 @@ class SimResultBayes(SimResult):
         self.betas = betas
         self.priors = priors
 
-    TITLE = "Bayes<br>accumulated_reward={reward:.3f}"
+    TITLE = "Bayes {k_text} [{beta_text}]<br>accumulated_reward={reward:.3f}"
 
     def get_occupancies(self, t, tr_H, occ_depth, inf_mod=inf_default):
         ctx = self.ctx
-        occupancies = inf_mod.occupancy.infer_bayes(ctx.g_H, dest=ctx.start_H,
+        occupancies = inf_mod.occupancy.infer_bayes(ctx.g_H, dest=ctx.goal_H,
                 T=occ_depth, betas=self.betas, traj=tr_H,
                 init_state=ctx.start_H, priors=self.priors)
 
@@ -310,4 +307,37 @@ class SimResultBayes(SimResult):
         expected_cost = self.expected_costs[t]
         k = self.k
 
-        return s.format(value=-expected_cost, reward=reward, k=k)
+        if t == 0:
+            beta_text = ""
+        else:
+            beta_text = ("beta: {inner}")
+            inner = ""
+            indices = np.argsort(-self.P_betas[t], kind='mergesort')
+            for i in indices[:3]:
+                inner += "P({beta:.1f})={P:.2f}, ".format(
+                        beta=self.betas[i], P=self.P_betas[t][i])
+            inner = inner[:-2]
+            beta_text = beta_text.format(inner=inner)
+
+        if k is not None:
+            k_text = "(k={})".format(k)
+        else:
+            k_text = ""
+
+        return s.format(beta_text=beta_text, k_text=k_text,
+                value=-expected_cost, reward=reward, k=k)
+
+    def gen_all_barplots(self):
+        bars = []
+        for t in range(len(self.plans)):
+            bars.append(self.gen_barplot(t))
+        return bars
+
+    def gen_barplot(self, t):
+        b = ["beta=" + str(x) for x in np.round(self.betas, 2)]
+        trace = go.Bar(
+                x=b, y=self.P_betas[t], text=np.round(self.P_betas[t], 2),
+                textposition="auto", textfont=dict(color="white"),
+                showlegend=False,
+                marker=dict(color="teal"))
+        return trace

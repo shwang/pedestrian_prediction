@@ -110,12 +110,16 @@ def plot_heat_maps(g, traj_or_trajs, occupancy_list, title_list,
 
 
 def subplots(subplot_list, title_list, shapes_list=[], title=None,
-        save_png=False, legend_settings={}, **kwargs):
+        save_png=False, legend_settings={}, layout_settings={}, top_padding=0.1,
+        **kwargs):
     assert len(subplot_list) == len(title_list), (subplot_list, title_list)
 
+    specs=[ [ {'t':top_padding} ]*3 ]
+
     fig = tools.make_subplots(rows=1, cols=len(subplot_list),
-            subplot_titles=title_list)
+            subplot_titles=title_list, specs=specs)
     fig['layout'].update(title=title)
+    fig['layout'].update(**layout_settings)
     shapes_joined = []
     for i, shapes in enumerate(shapes_list):
         for s in shapes:

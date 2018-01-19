@@ -5,8 +5,14 @@ from heapq import heappush, heappop
 from ..parameters import inf_default, val_default
 from ..util.util import display_plan
 
+def forget(traj, k):
+    if k is None:
+        return traj
+    assert k > 0
+    return traj[-k:]
+
 def robot_planner_bayes(ctx, state_R, betas, priors, traj_H=[], max_depth=None,
-        inf_mod=inf_default, **kwargs):
+        inf_mod=inf_default, k=None, **kwargs):
     """
     Calculate an A* plan assuming beta_star is in betas, and then finding the
     posterior distribution over beta_star given `traj_H`.
@@ -15,12 +21,12 @@ def robot_planner_bayes(ctx, state_R, betas, priors, traj_H=[], max_depth=None,
     """
     g_H = ctx.g_H
     collide_probs = CollideProbsBayes(ctx=ctx, betas=betas, priors=priors,
-            T=max_depth)
-    P_beta = inf_mod.beta.calc_posterior_over_set(g=g_H, traj=traj_H,
+            traj=forget(traj_H, k), T=max_depth)
+    P_beta = inf_mod.beta.calc_posterior_over_set(g=g_H, traj=traj_H, k=k,
             goal=g_H.goal, betas=betas, priors=priors)
     plan, ex_cost, final_node =  _robot_planner(ctx, state_R=state_R,
             traj_H=traj_H, collide_probs=collide_probs, verbose_return=True,
-            **kwargs)
+            k=k, **kwargs)
     return plan, ex_cost, final_node, P_beta
 
 
@@ -203,7 +209,9 @@ class CollideProbs(object):
         self.ctx = ctx
         self.g = g = ctx.g_H
         self.start_H = ctx.start_H
-        self.traj = traj
+        self.traj = traj  # Allowed to differ from ctx.traj_H b/c so we can give
+                            # simulated Robot a partial trajectory at each given
+                            # timestep
         if T is not None:
             self.T = T
         elif ctx.N is not None:
@@ -256,8 +264,8 @@ class CollideProbsBayes(CollideProbs):
 
     def calc_state_probs(self):
         g = self.g
-        state_probs = self.inf_mod.state.infer_bayes(g=g,
-                init_state=self.start_H, dest=self.g.goal, T=self.T,
+        state_probs = self.inf_mod.state.infer_bayes(g=g, traj=self.traj,
+                init_state=self.start_H, dest=g.goal, T=self.T,
                 betas=self.betas, priors=self.priors).reshape(
                         self.T+1, g.rows, g.cols)
         return state_probs
