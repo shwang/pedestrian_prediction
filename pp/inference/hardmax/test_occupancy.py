@@ -144,11 +144,19 @@ class TestInferFromStart(TestCase):
 
 class TestInferMultiDest(TestCase):
     def test_different_beta(self):
-        g = GridWorldMDP(3, 3, euclidean_rewards=True)
+        g = GridWorldMDP(24, 24, euclidean_rewards=True)
         D = np.zeros(9)
         D[0] = 1
-        dest_list = [g.coor_to_state(2, 2), g.coor_to_state(0, 2)]
-        traj = [(g.coor_to_state(0, 0), g.Actions.UP_RIGHT)]
-        P, betas, dest_probs = infer(g, traj=traj, dest_or_dests=dest_list,
+        dest_list = [g.coor_to_state(23, 10), g.coor_to_state(10, 23)]
+        # traj = [(g.coor_to_state(0, 0), g.Actions.UP_RIGHT)]
+
+        from ...util.hardmax.simulate import simulate
+        traj = simulate(g, 0, g.coor_to_state(20, 0), beta=0.1)
+
+        P, betas, dest_probs = infer(g, traj=traj[:10], dest_or_dests=dest_list,
                 T=10)
+
+        import pdb; pdb.set_trace()
+
+
         assert betas[0] != betas[1]

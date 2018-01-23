@@ -18,7 +18,10 @@ def _occ_starter(N, R, mode):
     mid = g.coor_to_state(N//2, N//2)
     one = g.coor_to_state(1,1)
 
-    if mode == "diag+bot":
+    if mode == "andrea":
+        start = 0
+        dest_list = [g.coor_to_state(23, 10), g.coor_to_state(10, 23)]
+    elif mode == "diag+bot":
         start = one
         dest_list = [diag, bot]
     elif mode == "diag+diag_top":
@@ -46,6 +49,9 @@ def _traj_starter(N, init_state, mode):
     if mode == "diag":
         start = one
         actions = [A.UP_RIGHT] * (N-2)
+    elif mode == "andrea":
+        start = 0
+        actions = [A.RIGHT] * (N-1)
     elif mode == "horizontal":
         start = g.coor_to_state(0, N//2)
         actions = [A.RIGHT] * (N-2)
