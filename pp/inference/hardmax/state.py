@@ -7,6 +7,50 @@ import beta as bt
 from ...parameters import val_default
 from ...util.args import unpack_opt_list
 
+def infer_joint(g, dests, betas, T, traj=[], init_state=None, priors=None,
+        k=None, action_prob=None, verbose_return=False, epsilon=0.02):
+    """
+    Calculate the expected state probabilties by taking a linear combination
+    over the state probabilities associated with each dest-beta pair. The
+    weights in this linear combination correspond to the joint posterior
+    probability of (beta, dest) given that `beta` is a member of `betas`,
+    `dest` is a member of `dests`, and the observed trajectory `traj`.
+
+    Returns:
+        occ_res [np.ndarray]: A (T+1 x S) array, where the `t`th entry is the
+            probability of state S in `t` timesteps from now.
+    Verbose Returns:
+        occ_all [np.ndarray]: A (|betas| x T+1 x S) array, where the `b`th entry
+            is the (T+1 x S) expected states probabilities if it were the case
+            that `beta_star == beta[b]`.
+        P_joint_DB [np.ndarray]: A (|dests| x |betas|) dimension array, where
+            the `b`th entry is the posterior probability associated with
+            `betas[b]`.
+    """
+    assert len(traj) > 0 or init_state is not None
+    if len(traj) > 0:
+        init_state = g.transition(*traj[-1])
+
+    assert dests is not None
+    assert betas is not None
+
+    P_joint_DB = destination.infer_joint(g, dests=dests, betas=betas, traj=traj,
+            priors=priors, verbose_return=False, epsilon=epsilon,)
+    assert P_joint_DB.shape == (n_D, n_B)
+
+    occ_all = np.empty([len(betas), T+1, g.S])
+    occ_res = np.zeros([T+1, g.S])
+    for i, dest in enumerate(dests):
+        for j, beta in enumerate(betas):
+            occ_all[i, j] = infer_simple(g, init_state, dest=dest, T=T,
+                    action_prob=action_prob, beta=beta)
+            occ_res = np.add(occ_res, occ_all * P_joint_DB[i, j], out=occ_res)
+
+    if verbose_return:
+        return occ_res, occ_all, P_joint_DB
+    else:
+        return occ_res
+
 def infer_bayes(g, dest, T, betas, traj=[], init_state=None, priors=None,
         k=None,
         action_prob=None, verbose_return=False):

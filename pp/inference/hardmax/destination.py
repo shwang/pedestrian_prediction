@@ -4,6 +4,8 @@ import numpy as np
 
 from ...parameters import val_default
 from .beta import binary_search
+from ...util.dest import destination_transition
+from sklearn.preprocessing import normalize
 
 def _mle_betas(g, traj, dests, beta_guesses, mk_bin_search=None, **kwargs):
     _binary_search = mk_bin_search or binary_search
@@ -158,3 +160,80 @@ def hmm_infer(g, traj, dests, epsilon=0.05, beta_guesses=None,
         return P_D_all, betas
     else:
         return P_D, betas
+
+def infer_joint(g, dests, betas, priors=None, traj=[], epsilon=0.02,
+        verbose_return=False, val_mod=val_default):
+    # Process parameters
+    T = len(traj)
+    n_D = len(dests)
+    n_B = len(betas)
+    if priors is None:
+        priors = np.ones([n_D, n_B])
+    else:
+        priors = np.array(priors)
+
+    assert priors.shape == (n_D, n_B)
+    assert np.sum(priors) != 0
+    assert np.all(priors >= 0)
+    priors = priors / np.sum(priors)
+
+    P_joint_DB_all = np.empty([T+1, n_D, n_B])
+    P_joint_DB_all[0] = priors
+    # Trivial case, don't compute action probabilities.
+    if T == 0:
+        if verbose_return == False:
+            return P_joint_DB_all[-1]
+        else:
+            return P_joint_DB_all[-1], P_joint_DB_all
+
+    # Precompute
+    AXIS_D, AXIS_B, AXIS_S, AXIS_A = 0, 1, 2, 3
+    boltzmann = np.empty([n_D, n_B, g.S, g.A])
+    for index_d, d in enumerate(dests):
+        for index_b, b in enumerate(betas):
+            act_probs = boltzmann[index_d, index_b]
+            act_probs[:] = val_mod.action_probabilities(g, goal_state=d, beta=b)
+
+    dest_trans = destination_transition(n_D, epsilon)
+
+    # t=0 (priors)
+    P_beta = np.sum(priors, axis=0)
+    assert P_beta.shape == (n_B,)
+    P_dest_given_beta = normalize(priors, axis=AXIS_D, norm='l1')
+
+    def calc_joint():
+        res =  np.multiply(P_dest_given_beta, P_beta.reshape(1, n_B))
+        assert np.sum(res) - 1 < 1e-5, np.sum(res)
+        return res
+
+    # Main loop: t >= 1
+    for i, (s, a) in enumerate(traj):
+        t = i + 1
+        if t == 1:
+            P_dest_given_beta = np.multiply(P_dest_given_beta,
+                    boltzmann[:, :, s, a], out=P_dest_given_beta)
+        else:
+            P_dest_given_beta_predict = np.matmul(dest_trans, P_dest_given_beta)
+            normalize(P_dest_given_beta_predict, axis=AXIS_B, copy=False,
+                    norm='l1')
+            assert P_dest_given_beta_predict.shape == (n_D, n_B)
+
+            P_dest_given_beta = np.multiply(P_dest_given_beta_predict,
+                    boltzmann[:, :, s, a], out=P_dest_given_beta)
+
+        # Use unnormalized P_dest_given_beta for P_beta.
+        P_beta = np.multiply(P_beta, np.sum(P_dest_given_beta, axis=AXIS_D),
+                out=P_beta)
+        np.divide(P_beta, np.sum(P_beta), out=P_beta)
+        assert P_beta.shape == (n_B,)
+
+        # Now that P_beta is computed, we can normalize P_dest_given_beta.
+        normalize(P_dest_given_beta, axis=AXIS_D, copy=False, norm='l1')
+        assert P_dest_given_beta.shape == (n_D, n_B)
+
+        P_joint_DB_all[t] = calc_joint()
+
+    if verbose_return == False:
+        return P_joint_DB_all[-1]
+    else:
+        return P_joint_DB_all[-1], P_joint_DB_all

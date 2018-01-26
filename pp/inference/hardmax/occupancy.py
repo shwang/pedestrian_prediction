@@ -24,6 +24,7 @@ def infer_simple(g, init_state, dest, T, beta=1, action_prob=None,
 
 def infer_bayes(g, dest, T, betas, traj=[], init_state=None, priors=None,
         action_prob=None, val_mod=val_default, verbose_return=False):
+    """ Single dest, multiple betas Bayesian inference."""
     assert betas is not None
     occ_res, occ_all, P_beta = state.infer_bayes(g, dest, T, betas, traj=traj,
             init_state=init_state,
@@ -36,6 +37,8 @@ def infer_bayes(g, dest, T, betas, traj=[], init_state=None, priors=None,
     else:
         return D
 
+def infer_joint():
+    """ Multi dest, multi beta Bayesian inference. """
 
 def infer_from_start(g, init_state, dest_or_dests, dest_probs=None,
         T=None, verbose=False, beta_or_betas=1, cached_action_probs=None,

@@ -156,7 +156,4 @@ class TestInferMultiDest(TestCase):
         P, betas, dest_probs = infer(g, traj=traj[:10], dest_or_dests=dest_list,
                 T=10)
 
-        import pdb; pdb.set_trace()
-
-
         assert betas[0] != betas[1]
