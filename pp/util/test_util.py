@@ -9,7 +9,7 @@ Actions = GridWorldMDP.Actions
 
 class TestUtilities(TestCase):
     def test_sum_rewards(self):
-        g = GridWorldMDP(3, 1, {(2,0): -10}, default_reward=-1)
+        g = GridWorldMDP(3, 1, reward_dict={(2,0): -10}, default_reward=-1)
         traj_1 = [(0, Actions.ABSORB)] * 10
         t.assert_allclose(-np.inf, sum_rewards(g, traj_1))
 

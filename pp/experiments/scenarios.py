@@ -8,8 +8,8 @@ from ..util import build_traj_from_actions
 
 def scenario_starter(mode, N, reward_human=-1, reward_robot=-1):
     A = GridWorldMDP.Actions
-    g_H = GridWorldMDP(N, N, {}, default_reward=reward_human, allow_wait=True)
-    g_R = GridWorldMDP(N, N, {}, default_reward=reward_robot, allow_wait=False)
+    g_H = GridWorldMDP(N, N, default_reward=reward_human, allow_wait=True)
+    g_R = GridWorldMDP(N, N, default_reward=reward_robot, allow_wait=False)
     coor = lambda x, y: g_H.coor_to_state(x, y)
 
     c_x = c_y = N//2

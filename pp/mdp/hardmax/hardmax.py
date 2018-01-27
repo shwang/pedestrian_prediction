@@ -63,7 +63,7 @@ def _value_iter(mdp, s, forwards, beta=1, verbose=False):
         else:
             for a in mdp.Actions:
                 reward = mdp.rewards[state, a] / beta
-                s_prime = mdp._transition(state, a)
+                s_prime = mdp.transition(state, a)
                 if reward == -np.inf or s_prime in visited:
                     continue
                 pq.put((-reward + cost, s_prime))

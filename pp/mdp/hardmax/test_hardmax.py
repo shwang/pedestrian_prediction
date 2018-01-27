@@ -10,13 +10,13 @@ ni = -np.inf
 
 class TestBackwardsValueIter(TestCase):
     def test_simple(self):
-        g = GridWorldMDP(3, 1, {(2,0): -9}, default_reward=-1)
+        g = GridWorldMDP(3, 1, reward_dict={(2,0): -9}, default_reward=-1)
         t.assert_allclose([0, -1, -10], backwards_value_iter(g, 0))
         t.assert_allclose([-1, 0, -9], backwards_value_iter(g, 1))
         t.assert_allclose([-2, -1, 0], backwards_value_iter(g, 2))
     def test_2d(self):
-        g = GridWorldMDP(3, 3, {(2,0): -3, (1,1): -4}, default_reward=-1,
-                euclidean_rewards=False)
+        g = GridWorldMDP(3, 3, reward_dict={(2,0): -3, (1,1): -4},
+                default_reward=-1, euclidean_rewards=False)
         expected = [-3, -2, -2,
                     -2, -4, -1,
                     -4, -1, 0]
@@ -24,14 +24,14 @@ class TestBackwardsValueIter(TestCase):
 
 class TestForwardsValueIter(TestCase):
     def test_simple(self):
-        g = GridWorldMDP(3, 1, {(2,0): -9}, default_reward=-1,
+        g = GridWorldMDP(3, 1, reward_dict={(2,0): -9}, default_reward=-1,
                 euclidean_rewards=False)
         t.assert_allclose([0, -1, -2], forwards_value_iter(g, 0))
         t.assert_allclose([-1, 0, -1], forwards_value_iter(g, 1))
         t.assert_allclose([-10, -9, 0], forwards_value_iter(g, 2))
     def test_2d(self):
-        g = GridWorldMDP(3, 3, {(2,0): -3, (1,1): -4}, default_reward=-1,
-                euclidean_rewards=False)
+        g = GridWorldMDP(3, 3, reward_dict={(2,0): -3, (1,1): -4},
+                default_reward=-1, euclidean_rewards=False)
         expected = [-3, -2, -2,
                     -2, -1, -1,
                     -2, -1, 0]
@@ -40,7 +40,7 @@ class TestForwardsValueIter(TestCase):
 
 class TestQValues(TestCase):
     def test_simple(self):
-        g = GridWorldMDP(3, 1, {(2,0): -9}, default_reward=-1)
+        g = GridWorldMDP(3, 1, reward_dict={(2,0): -9}, default_reward=-1)
         Q = np.empty([g.S, g.A], dtype=float)
 
         # V = [0, -1, -2]

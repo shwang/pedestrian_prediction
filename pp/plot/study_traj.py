@@ -60,7 +60,7 @@ def histogram_beta_est(N=50, R=-20, true_beta=10, min_beta=0.01, max_beta=50,
         inf_mod=inf_default):
     """Plot the frequency of beta_hat over every various simulated trajectories"""
     import plotly.graph_objs as go
-    g = GridWorldMDP(N, N, {}, default_reward=R)
+    g = GridWorldMDP(N, N, default_reward=R)
     start = 0
     goal = model_goal = g.coor_to_state(N-1, N-1)
     model_goal = goal

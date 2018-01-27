@@ -162,7 +162,7 @@ def _occ_starter(N, R, mode):
     """
     modes: diag, diag-top, vertical, diag-but-top
     """
-    g = GridWorldMDP(N, N, {}, default_reward=R)
+    g = GridWorldMDP(N, N, default_reward=R)
     one = g.coor_to_state(1,1)
     T = N+N
     if mode == "diag":

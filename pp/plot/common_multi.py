@@ -8,7 +8,7 @@ from ..parameters import inf_default
 from .common import *
 
 def _occ_starter(N, R, mode):
-    g = GridWorldMDP(N, N, {}, default_reward=R)
+    g = GridWorldMDP(N, N, default_reward=R)
     T = N+N
 
     diag = g.S - 1
