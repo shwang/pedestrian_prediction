@@ -39,8 +39,7 @@ class GridWorldMDP(MDP):
         ABSORB = 8
 
     def __init__(self, rows, cols, reward_dict={}, goal_state=None,
-            default_reward=-1, euclidean_rewards=True, allow_wait=False,
-            disallow_diag=False):
+            default_reward=-1, euclidean_rewards=True, allow_wait=False):
         """
         An agent in a GridWorldMDP can move between adjacent/diagonal cells.
 
@@ -61,8 +60,6 @@ class GridWorldMDP(MDP):
             allow_wait [bool]: (optional) If False, then the ABSORB action is
                 illegal in all states except the goal. If True, then the ABSORB
                 action costs default_reward in states other than the goal.
-            disallow_diag [bool]: (optional) Set to True to make diagonal moves
-                illegal. This is useful reducing the dimensionality of search.
         """
         assert rows > 0
         assert cols > 0
@@ -88,7 +85,6 @@ class GridWorldMDP(MDP):
         self.transition_cached_nd1d = np.empty(S*A, dtype=int)
         self.transition_cached_l = [0] *(S*A)
         self.allow_wait = allow_wait
-        self.disallow_diag = disallow_diag
 
         for s in xrange(S):
             for a in xrange(A):
@@ -159,8 +155,7 @@ class GridWorldMDP(MDP):
 
         illegal = False
         if r_prime < 0 or r_prime >= self.rows or \
-                c_prime < 0 or c_prime >= self.cols or \
-                (self.disallow_diag and a in self.diagonal_actions):
+                c_prime < 0 or c_prime >= self.cols:
             r_prime, c_prime = r, c
             illegal = True
 
@@ -191,13 +186,6 @@ class GridWorldMDP(MDP):
             self.rewards[:, self.Actions.ABSORB].fill(-np.inf)
         if goal_state != None:
             self.rewards[goal_state, self.Actions.ABSORB] = 0
-
-    def set_all_goals(self):
-        """
-        (Experimental)
-        Allow ABSORB at every state.
-        """
-        self.rewards[:, self.Actions.ABSORB].fill(0)
 
     def coor_to_state(self, r, c):
         """
