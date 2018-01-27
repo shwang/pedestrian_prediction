@@ -2,7 +2,7 @@ from unittest import TestCase
 import numpy as np
 from numpy import testing as t
 
-from ..mdp import GridWorldMDP
+from .. import GridWorldMDP
 from .hardmax import *
 
 Actions = GridWorldMDP.Actions

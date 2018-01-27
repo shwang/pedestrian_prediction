@@ -2,7 +2,7 @@ from __future__ import absolute_import
 from unittest import TestCase
 import numpy as np
 
-from .mdp import GridWorldMDP
+from .classic import GridWorldMDP
 
 ni = -np.inf
 Actions = GridWorldMDP.Actions

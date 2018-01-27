@@ -1,4 +1,4 @@
-from .mdp import GridWorldMDP
+from .classic import GridWorldMDP
 
 import hardmax
 import softmax
