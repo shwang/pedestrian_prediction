@@ -1,12 +1,6 @@
 from __future__ import division
 import numpy as np
 
-from ..softact_shared import q_values as _q_values
-from ..softact_shared import action_probabilities \
-        as _action_probabilities
-from ..softact_shared import trajectory_probability \
-        as _trajectory_probability
-
 def _value(g, s, verbose=False):
     """
     Estimate values as negative euclidean distance from s.
@@ -35,13 +29,3 @@ def _value(g, s, verbose=False):
     return V
 
 forwards_value_iter = backwards_value_iter = _value
-
-def q_values(g, goal_state):
-    return _q_values(g, goal_state, forwards_value_iter)
-
-def action_probabilities(g, goal_state, **kwargs):
-    return _action_probabilities(g, goal_state, q_values, **kwargs)
-
-def trajectory_probability(*args, **kwargs):
-    return _trajectory_probability(*args,
-            action_probabilities=action_probabilities, **kwargs)

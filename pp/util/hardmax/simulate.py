@@ -1,7 +1,5 @@
 import numpy as np
 
-from ...mdp.hardmax import action_probabilities
-
 def simulate(mdp, initial_state, goal_state, beta=1, path_length=None):
     """
     Generate a sample trajectory of a softmax agent's behavior.
@@ -24,7 +22,7 @@ def simulate(mdp, initial_state, goal_state, beta=1, path_length=None):
     """
     assert beta >= 0, beta
 
-    P = action_probabilities(mdp, goal_state, beta=beta)
+    P = mdp.action_probabilities(goal_state, beta=beta)
 
     if path_length == None:
         path_length = np.inf
@@ -63,7 +61,7 @@ def sample_action(mdp, state, goal, beta=1, cached_probs=None,
     if cached_probs is not None:
         P = cached_probs
     else:
-        P = action_probabilitilies(mdp, goal, beta=beta)
+        P = mdp.action_probabilitilies(goal, beta=beta)
 
     if absorb_only_on_goal:
             choice = mdp.Actions.ABSORB

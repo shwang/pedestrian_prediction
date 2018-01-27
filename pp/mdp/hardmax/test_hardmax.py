@@ -49,14 +49,14 @@ class TestQValues(TestCase):
         Q[1][Actions.LEFT] = -1
         Q[1][Actions.RIGHT] = -11
         Q[2][Actions.LEFT] = -2
-        t.assert_allclose(Q, q_values(g, 0, goal_stuck=True))
+        t.assert_allclose(Q, g.q_values(0, goal_stuck=True))
 
         # V = [-1, 0, -1]
         Q.fill(-np.inf)
         Q[0][Actions.RIGHT] = -1
         Q[1][Actions.ABSORB] = 0
         Q[2][Actions.LEFT] = -1
-        t.assert_allclose(Q, q_values(g, 1, goal_stuck=True))
+        t.assert_allclose(Q, g.q_values(1, goal_stuck=True))
 
         # V = [-10, -9, 0]
         Q.fill(-np.inf)
@@ -65,7 +65,7 @@ class TestQValues(TestCase):
         Q[1][Actions.RIGHT] = -9
         Q[2][Actions.LEFT] = -10
         Q[2][Actions.ABSORB] = 0
-        t.assert_allclose(Q, q_values(g, 2, goal_stuck=False))
+        t.assert_allclose(Q, g.q_values(2, goal_stuck=False))
 
 class TestActionProbabilities(TestCase):
     @classmethod
@@ -74,18 +74,18 @@ class TestActionProbabilities(TestCase):
 
     def test_one_choice(self):
         q_cached = np.array([[1, ni, ni], [ni, 1, ni], [ni, ni, 1]])
-        P = action_probabilities(self.g, 3, q_cached=q_cached)
+        P = self.g.action_probabilities(3, q_cached=q_cached)
         t.assert_allclose(P, [[1, 0, 0], [0, 1, 0], [0, 0, 1]])
 
     def test_uniform(self):
         q_cached = np.zeros([3,3])
-        P = action_probabilities(self.g, 3, q_cached=q_cached)
+        P = self.g.action_probabilities(3, q_cached=q_cached)
         t.assert_allclose(P, np.ones([3,3])/3)
 
     def test_goal_state_forces_absorb(self):
         g = self.g
         s = g.coor_to_state(3, 3)
-        P = action_probabilities(g, goal_state=s, goal_stuck=True)
+        P = self.g.action_probabilities(goal_state=s, goal_stuck=True)
 
         a = g.Actions.UP
 
@@ -94,7 +94,7 @@ class TestActionProbabilities(TestCase):
     def test_goal_state_allows_nonabsorb(self):
         g = self.g
         s = g.coor_to_state(3, 3)
-        P = action_probabilities(g, goal_state=s)
+        P = self.g.action_probabilities(goal_state=s)
 
         a = g.Actions.UP
 
@@ -127,7 +127,7 @@ class TestTransitionProbabilities(TestCase):
         g.set_goal(4)  # meaningless, a vestigal necessity for now. XXX
 
         act_probs = np.zeros([g.S, g.A])
-        res = transition_probabilities(g, act_probs_cached=act_probs)
+        res = g.transition_probabilities(act_probs_cached=act_probs)
         expect = np.zeros([g.S, g.S])
 
         t.assert_equal(res, expect)
@@ -144,7 +144,7 @@ class TestTransitionProbabilities(TestCase):
         act_probs[s, g.Actions.RIGHT] = 0.5
         act_probs[s, g.Actions.UP] = 0.5
 
-        res = transition_probabilities(g, act_probs_cached=act_probs)
+        res = g.transition_probabilities(act_probs_cached=act_probs)
         expect = np.zeros([g.S, g.S])
 
         expect[s_right, s] = 0.5
@@ -172,11 +172,5 @@ class TestTransitionProbabilities(TestCase):
         M[C, D] = 1
         M[D, A] = 1
 
-        res = transition_probabilities(g, act_probs_cached=P)
-
-        # x = np.zeros(4)
-        # x[A] = 1
-        # x_prime = np.matmul(expect, x)
-        # x_prime_res = np.matmul(res, x)
-        # import pdb; pdb.set_trace()
+        res = g.transition_probabilities(act_probs_cached=P)
         t.assert_allclose(res, expect)

@@ -101,7 +101,7 @@ def hmm_infer(g, traj, dests, epsilon=0.05, beta_guesses=None,
         - betas [np.ndarray]: The beta_hat associated with
             each destination.
     """
-    action_probabilities = mk_act_probs or val_mod.action_probabilities
+    action_probabilities = mk_act_probs or g.action_probabilities
     L = len(dests)
     assert L > 0
 
@@ -118,7 +118,7 @@ def hmm_infer(g, traj, dests, epsilon=0.05, beta_guesses=None,
     # Cache action probabilities for each destination and corresponding betas.
     P_a = np.empty([L, g.S, g.A])
     for i, (dest, beta) in enumerate(zip(dests, betas)):
-        P_a[i] = action_probabilities(g, dest, beta=beta)
+        P_a[i] = action_probabilities(dest, beta=beta)
 
     # Cache 'epsilon-stubborn' transition probabilities
     if L == 1:
@@ -192,7 +192,7 @@ def infer_joint(g, dests, betas, priors=None, traj=[], epsilon=0.02,
     for index_d, d in enumerate(dests):
         for index_b, b in enumerate(betas):
             act_probs = boltzmann[index_d, index_b]
-            act_probs[:] = val_mod.action_probabilities(g, goal_state=d, beta=b)
+            act_probs[:] = g.action_probabilities(goal_state=d, beta=b)
 
     dest_trans = destination_transition(n_D, epsilon)
 

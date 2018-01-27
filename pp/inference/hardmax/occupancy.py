@@ -59,7 +59,7 @@ def infer_from_start(g, init_state, dest_or_dests, dest_probs=None,
             a list of irrationality coefficients coresponding to each of the
             agent's potential goals.
         cached_action_probs [np.ndarray] (optional) -- Cached results from
-            `inference.hardmax.action_probabilities()`.
+            `MDP.action_probabilities()`.
         verbose_return [bool] (optional) -- If True, return extra information.
 
     Returns:
@@ -135,7 +135,8 @@ def infer(g, traj, dest_or_dests, T=None, verbose=False, beta_or_betas=None,
             a list of irrationality coefficients coresponding to each of the
             agent's potential goals.
         cached_action_probs [np.ndarray] (optional) -- Cached results from
-            `inference.hardmax.action_probabilities()`.
+            `MDP.action_probabilities()`. Mainly useful for testing, since
+            these results are already cached by default.
         verbose_return [bool] (optional): If True, then this function also
             returns the MLE beta and calculated destination probabilities.
     Returns:

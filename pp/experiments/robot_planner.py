@@ -69,8 +69,7 @@ def robot_planner_vanilla(ctx, state_R, traj_H=[], beta_guess=0.5,
 
 def _robot_planner(ctx, state_R, collide_probs, traj_H=[],
         max_heap_size=200000, k=None, beta_guess=0.5, verbosity=0,
-        verbose_return=False, val_mod=val_default, inf_mod=inf_default,
-        mk_q_values=None):
+        verbose_return=False, inf_mod=inf_default):
     """
     Verbosity indicates the number of top trajectories to visualize.
     Upon success, always visualize one trajectory.
@@ -83,9 +82,8 @@ def _robot_planner(ctx, state_R, collide_probs, traj_H=[],
     """
     verbose = verbosity > 0
     max_depth = collide_probs.T
-    q_values = mk_q_values or val_default.q_values
     g_R = ctx.g_R
-    q_values_R = q_values(g_R, g_R.goal)
+    q_values_R = g_R.q_values(g_R.goal)
 
     heap = []
     heappush(heap, (0, node_init(state_R, verbose)))

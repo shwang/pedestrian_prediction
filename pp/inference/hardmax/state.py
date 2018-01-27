@@ -103,8 +103,7 @@ def infer_simple(g, init_state, dest, T, beta=1, action_prob=None,
     """
     assert init_state is not None
     g.set_goal(dest)
-    M = val_mod.transition_probabilities(g, beta=beta,
-            act_probs_cached=action_prob)
+    M = g.transition_probabilities(beta=beta, act_probs_cached=action_prob)
 
     P_t = np.zeros([T+1, g.S])
     P_t[0][init_state] = 1
