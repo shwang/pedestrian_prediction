@@ -212,7 +212,7 @@ class SimResult(object):
         g_H, g_R = ctx.g_H, ctx.g_R
         beta = self.betas[t]
         if t == 0:
-            occupancies = inf_mod.occupancy.infer_from_start(g_H, ctx.goal_H,
+            occupancies = inf_mod.occupancy.infer_from_start(g_H, ctx.start_H,
                     g_H.goal, T=occ_depth, beta_or_betas=beta,
                     verbose_return=False)
         else:
