@@ -106,9 +106,9 @@ class TestTrajProb(TestCase):
         cls.g = GridWorldMDP(5,5)
 
     def test_empty(self):
-        t.assert_equal(trajectory_probability(self.g, 2, [], beta=1), 1)
-        t.assert_equal(trajectory_probability(self.g, 2, [], beta=2), 1)
-        t.assert_equal(trajectory_probability(self.g, 2, [], beta=3), 1)
+        t.assert_equal(self.g.trajectory_probability(2, [], beta=1), 1)
+        t.assert_equal(self.g.trajectory_probability(2, [], beta=2), 1)
+        t.assert_equal(self.g.trajectory_probability(2, [], beta=3), 1)
 
     def test_one_traj(self):
         fake_prob = np.zeros([self.g.S, self.g.A])
@@ -116,7 +116,7 @@ class TestTrajProb(TestCase):
         fake_prob[0, 0] = 0.5
         fake_prob[1, 1] = 0.5
         fake_prob[2, 2] = 0.5
-        t.assert_equal(trajectory_probability(self.g, 2, traj=traj,
+        t.assert_equal(self.g.trajectory_probability(2, traj=traj,
                     cached_act_probs=fake_prob), 0.125)
 
 

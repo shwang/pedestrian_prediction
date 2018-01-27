@@ -50,13 +50,13 @@ def infer(g, traj, dests, beta_guesses=None, val_mod=val_default,
         - betas [np.ndarray]: The beta_hat associated with each destination.
     """
     assert len(traj) > 0
-    _trajectory_probability = mk_traj_prob or val_mod.trajectory_probability
+    _trajectory_probability = mk_traj_prob or g.trajectory_probability
     betas = _mle_betas(g, traj, dests, beta_guesses, mk_bin_search,
             **bin_search_opts)
 
     dest_probs = np.zeros(len(dests))
     for i, dest in enumerate(dests):
-        dest_probs[i] = _trajectory_probability(g, dest, traj, beta=betas[i])
+        dest_probs[i] = _trajectory_probability(dest, traj, beta=betas[i])
 
     # XXX: fix this ugly hack for guaranteeing dest_prob[0] = 1
     # even when raw traj_prob = 0.

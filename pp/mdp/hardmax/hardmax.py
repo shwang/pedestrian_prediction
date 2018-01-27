@@ -63,7 +63,3 @@ def _value_iter(mdp, s, forwards, beta=1, verbose=False):
                 pq.put((-reward + cost, s_prime))
 
     return -V
-
-def trajectory_probability(g, *args, **kwargs):
-    return g.trajectory_probability(*args, **kwargs)
-
