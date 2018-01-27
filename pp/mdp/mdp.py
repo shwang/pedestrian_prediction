@@ -82,7 +82,6 @@ class GridWorldMDP(MDP):
         self.reverse_neighbors = [[] for _ in xrange(S)]
 
         self.transition_cached = np.empty([S, A], dtype=int)
-        self.transition_cached_nd1d = np.empty(S*A, dtype=int)
         self.transition_cached_l = [0] *(S*A)
         self.allow_wait = allow_wait
 
@@ -117,11 +116,6 @@ class GridWorldMDP(MDP):
 
         # Used by mdp.softact_shared.q_values
         self.q_cache = {}
-
-    def copy(self):
-        cp = GridWorldMDP(self.rows, self.cols, {})
-        cp.rewards = np.copy(self.rewards)
-        return cp
 
     def _transition(self, s, a):
         return self.transition_cached[s, a]
