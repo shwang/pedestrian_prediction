@@ -112,6 +112,9 @@ class MDP(object):
             goal_state [int]: The goal state, where the agent is allowed to
                 choose a 0-cost ABSORB action. The goal state's value is 0.
         Returns:
+            P [np.ndarray]: An S x A matrix where the (s, a) entry is the
+                probability that a beta-irrational agent will choose action `a`
+                given state `s`.
         """
         assert beta > 0, beta
 

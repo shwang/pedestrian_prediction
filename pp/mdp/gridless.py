@@ -17,14 +17,19 @@ def action_probabilities(start, dest, R, W, H, granularity=15, beta=1):
     dists /= np.sum(dists)
     return dists
 
-def action_probability(start, end, dest, W, H, **kwargs):
+
+# TODO: add something like `absorb_threshold` for determining whether R is
+# small enough to be considered `ABSORB`
+def action_probability(start, end, dest, W, H, granularity=15,
+        verbose_return=False, **kwargs):
     R = dist(start, end)
-    P = action_probabilities(start=start, dest=dest, R=R, W=W, H=H, **kwargs)
-    theta = math.atan(end - start)
+    P = action_probabilities(start=start, dest=dest, R=R, W=W, H=H,
+            granularity=granularity, **kwargs)
+    theta = math.atan2((end[1] - start[1]), (end[0] - start[0]))
     if theta < 0:
         theta += rad(360)
     assert 0 <= theta < rad(360)
-    theta_near_index = math.round(theta/granularity) % len(std_thetas)
+    theta_near_index = int(round(theta/rad(granularity)) % (len(P) - 1))
 
     if verbose_return:
         return P[theta_near_index], P

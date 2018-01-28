@@ -12,9 +12,6 @@ class TestDist(TestCase):
         self.assertAlmostEqual(dist(a, b), 5)
         self.assertAlmostEqual(dist(b, a), 5)
 
-class TestActionProbability(TestCase):
-    pass
-
 class TestCircle(TestCase):
     def test_circle_basic(self):
         center = np.array([0, 0])
@@ -64,7 +61,7 @@ class TestCircleDists(TestCase):
         self.assertEqual(dists[180//15], np.inf)
         self.assertAlmostEqual(dists[-1], 4)
 
-class TestActionProbabilitiy(TestCase):
+class TestActionProbabilities(TestCase):
     def test_basic(self):
         center = np.array([10, 10])
         dest = np.array([15, 10])
@@ -87,3 +84,22 @@ class TestActionProbabilitiy(TestCase):
         self.assertGreater(pabsorb, pleft)
         self.assertAlmostEqual(pup, pdown)
         self.assertEqual(pleft, 0)
+
+class TestActionProbability(TestCase):
+    def test_basic(self):
+        center = np.array([10, 10])
+        right = np.array([11, 10])
+        left = np.array([9, 10])
+        up = np.array([10, 11])
+        down = np.array([10, 9])
+
+        dest = np.array([15, 10])  # dest is far to the right
+
+        act_prob = lambda end: action_probability(start=center, end=end,
+                dest=dest, W=100, H=100)
+
+        pright, pleft = act_prob(right), act_prob(left)
+        pup, pdown = act_prob(up), act_prob(down)
+
+        self.assertGreater(pright, pleft)
+        self.assertAlmostEqual(pup, pdown)

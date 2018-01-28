@@ -2,6 +2,7 @@ from __future__ import division
 
 import numpy as np
 
+from ...mdp import gridless as gridless
 from ...parameters import val_default
 from .beta import binary_search
 from ...util.dest import destination_transition
@@ -162,9 +163,12 @@ def hmm_infer(g, traj, dests, epsilon=0.05, beta_guesses=None,
         return P_D, betas
 
 def infer_joint(g, dests, betas, priors=None, traj=[], epsilon=0.02,
-        verbose_return=False, val_mod=val_default):
+        verbose_return=False, use_gridless=False):
     # Process parameters
-    T = len(traj)
+    if not use_gridless:
+        T = len(traj)
+    else:
+        T = max(len(traj) - 1, 0)
     n_D = len(dests)
     n_B = len(betas)
     if priors is None:
@@ -206,12 +210,44 @@ def infer_joint(g, dests, betas, priors=None, traj=[], epsilon=0.02,
         assert np.sum(res) - 1 < 1e-5, np.sum(res)
         return res
 
+    if not use_gridless:
+        emissions = traj
+    else:
+        emissions = []
+        for i in range(len(traj) - 1):
+            s, s_prime = np.array(traj[i]), np.array(traj[i+1])
+            s = np.array(s, dtype=float)
+            s_prime = np.array(s_prime, dtype=float)
+            assert s.shape == (2,)
+            assert s_prime.shape == (2,)
+            emissions.append([s, s_prime])
+
     # Main loop: t >= 1
-    for i, (s, a) in enumerate(traj):
+    for i, emission in enumerate(emissions):
+        # Calculate emission probability given each (dest, beta) pair
+        if use_gridless:
+            s, s_prime = emission
+            assert s.shape == (2,), s.shape
+            assert s_prime.shape == (2,), s_prime.shape
+            boltzmann = np.empty([n_D, n_B])
+            for index_d, d in enumerate(dests):
+                for index_b, b in enumerate(betas):
+                    d_coor = g.state_to_real_coor(d)
+                    boltzmann[index_d, index_b] = gridless.action_probability(
+                            start=s, end=s_prime, dest=d_coor, beta=b,
+                            W=g.rows, H=g.cols)
+        else:
+            s, a = emission
+            boltzmann = np.empty([n_D, n_B])
+            for index_d, d in enumerate(dests):
+                for index_b, b in enumerate(betas):
+                    boltzmann[index_d, index_b] = g.action_probabilities(
+                            goal=d, beta=b)[s, a]
+
         t = i + 1
         if t == 1:
             P_dest_given_beta = np.multiply(P_dest_given_beta,
-                    boltzmann[:, :, s, a], out=P_dest_given_beta)
+                    boltzmann, out=P_dest_given_beta)
         else:
             P_dest_given_beta_predict = np.matmul(dest_trans, P_dest_given_beta)
             normalize(P_dest_given_beta_predict, axis=AXIS_B, copy=False,
@@ -219,7 +255,7 @@ def infer_joint(g, dests, betas, priors=None, traj=[], epsilon=0.02,
             assert P_dest_given_beta_predict.shape == (n_D, n_B)
 
             P_dest_given_beta = np.multiply(P_dest_given_beta_predict,
-                    boltzmann[:, :, s, a], out=P_dest_given_beta)
+                    boltzmann, out=P_dest_given_beta)
 
         # Use unnormalized P_dest_given_beta for P_beta.
         P_beta = np.multiply(P_beta, np.sum(P_dest_given_beta, axis=AXIS_D),
