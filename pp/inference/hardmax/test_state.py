@@ -6,6 +6,27 @@ from numpy import testing as t
 from ...mdp import GridWorldMDP
 from .state import *
 
+class TestInferJoint(TestCase):
+    def test_classic_nocrash(self):
+        g = GridWorldMDP(10, 10)
+        coor = g.coor_to_state
+        dests = [coor(7, 7), coor(2, 2), coor(5, 0)]
+        betas = [1, 2, 3, 4]
+        T = 5
+        traj = [(coor(1, 1), g.Actions.RIGHT), (coor(2, 1), g.Actions.UP)]
+        infer_joint(g=g, dests=dests, betas=betas, T=T, use_gridless=False,
+                traj=traj)
+
+    def test_gridless_nocrash(self):
+        g = GridWorldExpanded(10, 10)
+        coor = g.coor_to_state
+        dests = [coor(7, 7), coor(2, 2), coor(5, 0)]
+        betas = [1, 2, 3, 4]
+        T = 5
+        traj = [(1, 1), (2, 1), (3, 1), (4.5, 6)]
+        infer_joint(g=g, dests=dests, betas=betas, T=T, use_gridless=True,
+                traj=traj)
+
 class TestInferBayesBeta(TestCase):
 
     def test_trivial(self):

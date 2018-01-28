@@ -37,8 +37,29 @@ def infer_bayes(g, dest, T, betas, traj=[], init_state=None, priors=None,
     else:
         return D
 
-def infer_joint():
-    """ Multi dest, multi beta Bayesian inference. """
+def infer_joint(*args, **kwargs):
+    """
+    Multi dest, multi beta Bayesian inference.
+    Params: The same as state.infer_state.
+
+    Returns:
+        occ_res [np.ndarray]: A (T+1 x S) array, where the `t`th entry is the
+            probability of state S in `t` timesteps from now.
+        occ_all [np.ndarray]: A (|betas| x T+1 x S) array, where the `b`th entry
+            is the (T+1 x S) expected states probabilities if it were the case
+            that `beta_star == beta[b]`.
+        P_joint_DB [np.ndarray]: A (|dests| x |betas|) dimension array, where
+            the `b`th entry is the posterior probability associated with
+            `betas[b]`.
+    """
+    occ_res, occ_all, P_joint_DB = state.infer_joint(*args, verbose_return=True,
+            **kwargs)
+
+    D = np.sum(occ_res[1:], axis=0)
+    D[dest] = 1  # This value is fixed.
+
+    return D, occ_res, occ_all, P_beta
+
 
 def infer_from_start(g, init_state, dest_or_dests, dest_probs=None,
         T=None, verbose=False, beta_or_betas=1, cached_action_probs=None,

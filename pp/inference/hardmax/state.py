@@ -4,17 +4,53 @@ import numpy as np
 import destination
 import beta as bt
 
+from ...mdp import GridWorldExpanded
+
 from ...parameters import val_default
 from ...util.args import unpack_opt_list
 
-def infer_joint(g, dests, betas, T, traj=[], init_state=None, priors=None,
-        k=None, action_prob=None, verbose_return=False, epsilon=0.02):
+def infer_joint(g, dests, betas, T, use_gridless=False, traj=[],
+        init_state=None, priors=None, k=None,
+        verbose_return=False, epsilon=0.02):
     """
     Calculate the expected state probabilties by taking a linear combination
     over the state probabilities associated with each dest-beta pair. The
     weights in this linear combination correspond to the joint posterior
     probability of (beta, dest) given that `beta` is a member of `betas`,
     `dest` is a member of `dests`, and the observed trajectory `traj`.
+
+    Params:
+        g [GridWorldMDP or GridWorldExpanded]: The MDP.
+        dests [list of ints]: The states that are possible destinations.
+        betas [list of floats]: The possible rationality constants.
+        T [int]: The number of timesteps to predict into the future.
+        use_gridless [bool]: If True, then the required format for the `traj`
+            parameter is changed. As a sanity check, `use_gridless=True`
+            requires that `g` is an instance of `GridWorldExpanded`.
+        traj [list] (optional):
+            If `use_gridless` is False, then `traj` should be a list of
+            (state, action) pairs describing the Human's motion so far.
+
+            If `use_gridless` is True, then `traj` should be a list of
+            (x, y) pairs, where x and y are floats. The ith entry of `traj`
+            describes the Human's observed location at time `i`. It is assumed
+            that timesteps are chosen appropriately so that every timestep,
+            the Human either moves about 1 unit of Euclidean distance or is
+            standing in place.
+        init_state [int] (optional):
+            If `traj` is not given, then `init_state` must be set.
+            `init_state` provides the Human's current position when this
+            information cannot be inferred from `traj`.
+        priors [np.ndarray] (optional): If D is the size of `dests` and B is
+            the size of `betas`, then priors is a D x B array. The `(d, b)`th
+            entry of `priors` is the prior joint probability:
+                P(dest=dests[d], beta=betas[b]).
+            If priors is not given, then a uniform prior is assumed.
+        k [int] (optional): The trajectory-forgetting parameter. If k is given,
+            then only consider the last k timesteps of the trajectory when
+            performing compuations.  XXXXX Not yet implemented XXXXX
+        verbose_return [bool]: If True, then return additional results, as
+            described below.
 
     Returns:
         occ_res [np.ndarray]: A (T+1 x S) array, where the `t`th entry is the
@@ -28,23 +64,37 @@ def infer_joint(g, dests, betas, T, traj=[], init_state=None, priors=None,
             `betas[b]`.
     """
     assert len(traj) > 0 or init_state is not None
+    if use_gridless:
+        assert isinstance(g, GridWorldExpanded)
     if len(traj) > 0:
-        init_state = g.transition(*traj[-1])
+        if not use_gridless:
+            init_state = g.transition(*traj[-1])
+        else:
+            x = int(round(traj[-1][0] - 0.5))
+            y = int(round(traj[-1][1] - 0.5))
+            init_state = g.coor_to_state(x, y)
 
     assert dests is not None
     assert betas is not None
 
     P_joint_DB = destination.infer_joint(g, dests=dests, betas=betas, traj=traj,
-            priors=priors, verbose_return=False, epsilon=epsilon,)
+            priors=priors, verbose_return=False, epsilon=epsilon,
+            use_gridless=use_gridless)
+    n_D, n_B = len(dests), len(betas)
     assert P_joint_DB.shape == (n_D, n_B)
 
-    occ_all = np.empty([len(betas), T+1, g.S])
+    # State prediction
+    occ_all = np.empty([n_D, n_B, T+1, g.S])
     occ_res = np.zeros([T+1, g.S])
     for i, dest in enumerate(dests):
         for j, beta in enumerate(betas):
             occ_all[i, j] = infer_simple(g, init_state, dest=dest, T=T,
-                    action_prob=action_prob, beta=beta)
-            occ_res = np.add(occ_res, occ_all * P_joint_DB[i, j], out=occ_res)
+                    beta=beta)
+
+    weighted = np.multiply(occ_all, P_joint_DB.reshape(n_D, n_B, 1, 1))
+    # occ_res = np.add(occ_res, occ_all[i,j] * P_joint_DB[i, j], out=occ_res)
+    occ_res = np.sum(np.sum(weighted, axis=0), axis=0)
+    assert occ_res.shape == (T+1, g.S)
 
     if verbose_return:
         return occ_res, occ_all, P_joint_DB
