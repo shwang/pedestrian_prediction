@@ -3,6 +3,7 @@ from __future__ import division
 import numpy as np
 from sklearn.preprocessing import normalize
 
+# Abstract Class -- implement Q values
 class MDP(object):
     def __init__(self, rows, cols, A, transition_helper, reward_dict={},
             default_reward=-1):
@@ -38,8 +39,6 @@ class MDP(object):
 
         self.act_prob_cache = {}
         self.trans_prob_cache = {}
-        # Right now this is used by `val_mod`s. But since I want q_values
-        # to become tied to the MDP itself, it should be a private thing.
         self.q_cache = {}
 
         # neighbor[s] is a set of tuples (a, s_prime)
@@ -70,6 +69,7 @@ class MDP(object):
     def transition(self, s, a):
         return self.transition_cached[s, a]
 
+    # TODO: cache all these values, because `self.*` is costly.
     def coor_to_state(self, r, c):
         """
         Params:
@@ -84,6 +84,7 @@ class MDP(object):
         assert 0 <= c < self.cols, "invalid (cols, c)={}".format((self.cols, c))
         return r * self.cols + c
 
+    # TODO: cache all these values, because `self.*` is costly.
     def state_to_coor(self, s):
         """
         Params:
@@ -95,10 +96,13 @@ class MDP(object):
         assert s < self.rows * self.cols
         return s // self.cols, s % self.cols
 
-    def q_values(mdp, goal_state, goal_stuck=False, **kwargs):
+    def set_goal(self, goal):
+        self.goal = goal
+
+    def q_values(self, goal_state, goal_stuck=False, **kwargs):
         raise Exception("Abstract method")
 
-    def action_probabilities(self, goal_state, beta=1, q_cached=None,
+    def action_probabilities(self, goal, beta=1, q_cached=None,
             goal_stuck=False, **kwargs):
         """
         At each state, calculate the softmax probability of each action
@@ -111,14 +115,14 @@ class MDP(object):
         """
         assert beta > 0, beta
 
-        key = (goal_state, beta, goal_stuck)
+        key = (goal, beta, goal_stuck)
 
         if q_cached is not None:
             Q = np.copy(q_cached)
         else:
             if key in self.act_prob_cache:
                 return np.copy(self.act_prob_cache[key])
-            Q = self.q_values(goal_state, goal_stuck=goal_stuck, **kwargs)
+            Q = self.q_values(goal, goal_stuck=goal_stuck, **kwargs)
 
         np.divide(Q, beta, out=Q)
         # Use amax to mitigate numerical errors
@@ -130,18 +134,18 @@ class MDP(object):
         self.act_prob_cache[key] = np.copy(Q)
         return Q
 
-    def transition_probabilities(self, beta=1, dest=None, goal_stuck=False,
+    def transition_probabilities(self, beta=1, goal=None, goal_stuck=False,
             act_probs_cached=None):
         """
         Calculate the SxS state probability transition matrix `T` for a
         beta-irrational agent.
         Params:
-        dest [int]: If provided, switch the MDP's goal to this state first.
+        goal [int]: If provided, switch the MDP's goal to this state first.
             Otherwise, use the MDP's most recent goal.
         """
         assert beta > 0, beta
-        if dest is not None:
-            self.set_goal(dest)
+        if goal is not None:
+            self.set_goal(goal)
         key = (self.goal, beta, goal_stuck)
 
         if act_probs_cached is None:
@@ -163,7 +167,7 @@ class MDP(object):
         self.trans_prob_cache[key] = np.copy(T)
         return T
 
-    def trajectory_probability(self, goal_state, traj, beta=1,
+    def trajectory_probability(self, goal, traj, beta=1,
             cached_act_probs=None):
         """
         Calculate the product of the probabilities of each
@@ -171,7 +175,7 @@ class MDP(object):
         a goal_state, and beta.
 
         Params:
-            goal_state [int]: The goal state. At the goal state, the agent
+            goal [int]: The goal state. At the goal state, the agent
                 always chooses the ABSORB action at no cost.
             traj [list of (int, int)]: A list of state-action pairs. If this
                 is an empty list, return traj_prob=1.
@@ -185,7 +189,7 @@ class MDP(object):
             return 1
 
         if cached_act_probs is None:
-            P = self.action_probabilities(goal_state, beta=beta)
+            P = self.action_probabilities(goal, beta=beta)
         else:
             P = cached_act_probs
 

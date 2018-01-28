@@ -192,7 +192,7 @@ def infer_joint(g, dests, betas, priors=None, traj=[], epsilon=0.02,
     for index_d, d in enumerate(dests):
         for index_b, b in enumerate(betas):
             act_probs = boltzmann[index_d, index_b]
-            act_probs[:] = g.action_probabilities(goal_state=d, beta=b)
+            act_probs[:] = g.action_probabilities(goal=d, beta=b)
 
     dest_trans = destination_transition(n_D, epsilon)
 

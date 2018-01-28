@@ -85,7 +85,7 @@ class TestActionProbabilities(TestCase):
     def test_goal_state_forces_absorb(self):
         g = self.g
         s = g.coor_to_state(3, 3)
-        P = self.g.action_probabilities(goal_state=s, goal_stuck=True)
+        P = self.g.action_probabilities(goal=s, goal_stuck=True)
 
         a = g.Actions.UP
 
@@ -94,7 +94,7 @@ class TestActionProbabilities(TestCase):
     def test_goal_state_allows_nonabsorb(self):
         g = self.g
         s = g.coor_to_state(3, 3)
-        P = self.g.action_probabilities(goal_state=s)
+        P = self.g.action_probabilities(goal=s)
 
         a = g.Actions.UP
 

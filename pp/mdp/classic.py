@@ -19,6 +19,46 @@ class Actions(IntEnum):
 diagonal_actions = {Actions.UP_LEFT, Actions.UP_RIGHT, Actions.DOWN_LEFT,
         Actions.DOWN_RIGHT}
 
+# XXX: optimize so that we don't need to convert between state and coor.
+def transition_helper(g, s, a, alert_illegal=False):
+    r, c = g.state_to_coor(s)
+    assert a >= 0 and a < len(Actions), a
+
+    r_prime, c_prime = r, c
+    if a == Actions.LEFT:
+        r_prime = r - 1
+    elif a == Actions.RIGHT:
+        r_prime = r + 1
+    elif a == Actions.DOWN:
+        c_prime = c - 1
+    elif a == Actions.UP:
+        c_prime = c + 1
+    elif a == Actions.UP_LEFT:
+        r_prime, c_prime = r - 1, c + 1
+    elif a == Actions.UP_RIGHT:
+        r_prime, c_prime = r + 1, c + 1
+    elif a == Actions.DOWN_LEFT:
+        r_prime, c_prime = r - 1, c - 1
+    elif a == Actions.DOWN_RIGHT:
+        r_prime, c_prime = r + 1, c - 1
+    elif a == Actions.ABSORB:
+        pass
+    else:
+        raise BaseException("undefined action {}".format(a))
+
+    illegal = False
+    if r_prime < 0 or r_prime >= g.rows or \
+            c_prime < 0 or c_prime >= g.cols:
+        r_prime, c_prime = r, c
+        illegal = True
+
+    s_prime = g.coor_to_state(r_prime, c_prime)
+
+    if alert_illegal:
+        return s_prime, illegal
+    else:
+        return s_prime
+
 # Classic Gridworld
 class GridWorldMDP(MDP):
     Actions = Actions
@@ -60,43 +100,7 @@ class GridWorldMDP(MDP):
 
     # XXX: optimize so that we don't need to convert between state and coor.
     def _transition_helper(self, s, a, alert_illegal=False):
-        r, c = self.state_to_coor(s)
-        assert a >= 0 and a < len(Actions), a
-
-        r_prime, c_prime = r, c
-        if a == Actions.LEFT:
-            r_prime = r - 1
-        elif a == Actions.RIGHT:
-            r_prime = r + 1
-        elif a == Actions.DOWN:
-            c_prime = c - 1
-        elif a == Actions.UP:
-            c_prime = c + 1
-        elif a == Actions.UP_LEFT:
-            r_prime, c_prime = r - 1, c + 1
-        elif a == Actions.UP_RIGHT:
-            r_prime, c_prime = r + 1, c + 1
-        elif a == Actions.DOWN_LEFT:
-            r_prime, c_prime = r - 1, c - 1
-        elif a == Actions.DOWN_RIGHT:
-            r_prime, c_prime = r + 1, c - 1
-        elif a == Actions.ABSORB:
-            pass
-        else:
-            raise BaseException("undefined action {}".format(a))
-
-        illegal = False
-        if r_prime < 0 or r_prime >= self.rows or \
-                c_prime < 0 or c_prime >= self.cols:
-            r_prime, c_prime = r, c
-            illegal = True
-
-        s_prime = self.coor_to_state(r_prime, c_prime)
-
-        if alert_illegal:
-            return s_prime, illegal
-        else:
-            return s_prime
+        return transition_helper(self, s, a, alert_illegal=alert_illegal)
 
     def set_goal(self, goal_state):
         """
