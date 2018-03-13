@@ -62,7 +62,7 @@ def compute_grad(g, traj, goal, beta, k=np.inf, decay_rate=0, debug=False,
     Q = g.q_values(goal)
     # Prevent -inf * 0 in the multiply(P,Q) operation.
     # REQUIRES NUMPY VERSION 1.13
-    np.nan_to_num(Q, copy=False)
+    Q = np.nan_to_num(Q) #, copy=False)
     P = g.action_probabilities(goal, beta=beta)
     assert Q.shape == P.shape
 

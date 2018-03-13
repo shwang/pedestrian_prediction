@@ -10,8 +10,8 @@ from ...parameters import val_default
 from ...util.args import unpack_opt_list
 
 def infer_joint(g, dests, betas, T, use_gridless=False, traj=[],
-        init_state=None, priors=None, k=None,
-        verbose_return=False, epsilon=0.02):
+        init_state=None, priors=None, epsilon_dest=0.02, epsilon_beta=0.02,
+        k=None, verbose_return=False):
     """
     Calculate the expected state probabilties by taking a linear combination
     over the state probabilities associated with each dest-beta pair. The
@@ -46,6 +46,10 @@ def infer_joint(g, dests, betas, T, use_gridless=False, traj=[],
             entry of `priors` is the prior joint probability:
                 P(dest=dests[d], beta=betas[b]).
             If priors is not given, then a uniform prior is assumed.
+        epsilon_dest [float]: Noise parameter for epsilon-stubborn destination
+            transitions.
+        epsilon_beta [float]: Noise parameter for epsilon-stubborn beta
+            transitions.
         k [int] (optional): The trajectory-forgetting parameter. If k is given,
             then only consider the last k timesteps of the trajectory when
             performing compuations.  XXXXX Not yet implemented XXXXX
@@ -70,16 +74,16 @@ def infer_joint(g, dests, betas, T, use_gridless=False, traj=[],
         if not use_gridless:
             init_state = g.transition(*traj[-1])
         else:
-            x = int(round(traj[-1][0] - 0.5))
-            y = int(round(traj[-1][1] - 0.5))
+            x = int(round(traj[-1][0]))
+            y = int(round(traj[-1][1]))
             init_state = g.coor_to_state(x, y)
 
     assert dests is not None
     assert betas is not None
 
     P_joint_DB = destination.infer_joint(g, dests=dests, betas=betas, traj=traj,
-            priors=priors, verbose_return=False, epsilon=epsilon,
-            use_gridless=use_gridless)
+            priors=priors, epsilon_dest=epsilon_dest, epsilon_beta=epsilon_beta,
+            use_gridless=use_gridless, verbose_return=False)
     n_D, n_B = len(dests), len(betas)
     assert P_joint_DB.shape == (n_D, n_B)
 
@@ -160,7 +164,7 @@ def infer_simple(g, init_state, dest, T, beta=1, action_prob=None,
     for t in range(1, T+1):
         P = P_t[t-1]
         P_prime = P_t[t]
-        P_prime[:] = np.matmul(M, P)
+        P_prime[:] = np.dot(M, P)
     return P_t
 
 

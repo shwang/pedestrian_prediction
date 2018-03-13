@@ -5,7 +5,7 @@ import numpy as np
 from ...mdp import gridless as gridless
 from ...parameters import val_default
 from .beta import binary_search
-from ...util.dest import destination_transition
+from ...util.stubborn import epsilon_stubborn_transition
 from sklearn.preprocessing import normalize
 
 def _mle_betas(g, traj, dests, beta_guesses, mk_bin_search=None, **kwargs):
@@ -162,8 +162,8 @@ def hmm_infer(g, traj, dests, epsilon=0.05, beta_guesses=None,
     else:
         return P_D, betas
 
-def infer_joint(g, dests, betas, priors=None, traj=[], epsilon=0.02,
-        verbose_return=False, use_gridless=False):
+def infer_joint(g, dests, betas, priors=None, traj=[], use_gridless=False,
+    epsilon_dest=0.02, epsilon_beta=0.02, verbose_return=False):
     # Process parameters
     if not use_gridless:
         T = len(traj)
@@ -198,7 +198,8 @@ def infer_joint(g, dests, betas, priors=None, traj=[], epsilon=0.02,
             act_probs = boltzmann[index_d, index_b]
             act_probs[:] = g.action_probabilities(goal=d, beta=b)
 
-    dest_trans = destination_transition(n_D, epsilon)
+    dest_trans = epsilon_stubborn_transition(n_D, epsilon_dest)
+    beta_trans = epsilon_stubborn_transition(n_B, epsilon_beta)
 
     # t=0 (priors)
     P_beta = np.sum(priors, axis=0)
@@ -224,6 +225,7 @@ def infer_joint(g, dests, betas, priors=None, traj=[], epsilon=0.02,
 
     # Main loop: t >= 1
     for i, emission in enumerate(emissions):
+        t = i + 1
         # Calculate emission probability given each (dest, beta) pair
         if use_gridless:
             s, s_prime = emission
@@ -244,25 +246,25 @@ def infer_joint(g, dests, betas, priors=None, traj=[], epsilon=0.02,
                     boltzmann[index_d, index_b] = g.action_probabilities(
                             goal=d, beta=b)[s, a]
 
-        t = i + 1
-        if t == 1:
-            P_dest_given_beta = np.multiply(P_dest_given_beta,
-                    boltzmann, out=P_dest_given_beta)
-        else:
-            P_dest_given_beta_predict = np.matmul(dest_trans, P_dest_given_beta)
-            normalize(P_dest_given_beta_predict, axis=AXIS_B, copy=False,
-                    norm='l1')
-            assert P_dest_given_beta_predict.shape == (n_D, n_B)
 
-            P_dest_given_beta = np.multiply(P_dest_given_beta_predict,
-                    boltzmann, out=P_dest_given_beta)
 
+        # Apply time update to "smooth out" dest and beta distributions
+        # (acknowledging that they can change over time).
+        P_dest_given_beta_predict = np.dot(dest_trans, P_dest_given_beta)
+        normalize(P_dest_given_beta_predict, axis=AXIS_B, copy=False,
+                norm='l1')
+        assert P_dest_given_beta_predict.shape == (n_D, n_B)
+
+        P_beta_predict = np.dot(beta_trans, P_beta)
+
+        # Apply measurement update to dest and beta based on next observation.
+        P_dest_given_beta = np.multiply(P_dest_given_beta_predict,
+                boltzmann, out=P_dest_given_beta)
         # Use unnormalized P_dest_given_beta for P_beta.
-        P_beta = np.multiply(P_beta, np.sum(P_dest_given_beta, axis=AXIS_D),
+        P_beta = np.multiply(P_beta_predict, np.sum(P_dest_given_beta, axis=AXIS_D),
                 out=P_beta)
         np.divide(P_beta, np.sum(P_beta), out=P_beta)
         assert P_beta.shape == (n_B,)
-
         # Now that P_beta is computed, we can normalize P_dest_given_beta.
         normalize(P_dest_given_beta, axis=AXIS_D, copy=False, norm='l1')
         assert P_dest_given_beta.shape == (n_D, n_B)
