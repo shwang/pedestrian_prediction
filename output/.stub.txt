@@ -1,3 +1,0 @@
-To ensure that output/ exists
-
-The directory is used when generating .html plots.
