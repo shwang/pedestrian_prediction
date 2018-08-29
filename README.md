@@ -5,5 +5,5 @@ Realtime, confidence-varying trajectory prediction for "Probabilistically Safe R
 ```
 git clone https://github.com/sirspinach/pedestrian_prediction.git
 cd pedestrian_prediction
-pip install .
+sudo pip install .
 ```
