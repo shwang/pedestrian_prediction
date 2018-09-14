@@ -263,6 +263,7 @@ def infer_joint(g, dests, betas, priors=None, traj=[], use_gridless=False,
         # Use unnormalized P_dest_given_beta for P_beta.
         P_beta = np.multiply(P_beta_predict, np.sum(P_dest_given_beta, axis=AXIS_D),
                 out=P_beta)
+        P_beta = np.clip(P_beta, 1e-8, 1-1e-8)
         np.divide(P_beta, np.sum(P_beta), out=P_beta)
         assert P_beta.shape == (n_B,)
         # Now that P_beta is computed, we can normalize P_dest_given_beta.
