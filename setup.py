@@ -13,7 +13,7 @@ setup(
     name='pedestrian_prediction',
     version='0.1',
     long_description=open('README.md').read(),
-    long_description_context_type='text/markdown',
+    long_description_content_type='text/markdown',
     url='https://github.com/sirspinach/pedestrian_prediction',
     author="Steven H. Wang",
     author_email='wang.steven.h@gmail.com',
