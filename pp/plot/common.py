@@ -1,4 +1,5 @@
 import numpy as np
+import time, os
 
 from ..mdp import GridWorldMDP
 from ..inference.softmax.destination import infer_destination
@@ -137,19 +138,28 @@ def subplots(subplot_list, title_list, shapes_list=[], title=None,
     show_fig(fig, save_png, **kwargs)
 
 
-uid_pointer = [100]
-def show_fig(fig, save_png=False, delay=3.2):
-    uid_pointer[0] += 1
-    uid = uid_pointer[0]
-    if not save_png:
-        py.plot(fig, filename="output/out{}.html".format(uid))
-    else:
-        py.plot(fig, filename="output/out{}.html".format(uid),
-            image='png', image_filename="output/out{}.png".format(uid),
-            image_width=1400, image_height=750)
-        if delay is not None:
-            import time
-            time.sleep(delay)
+def _make_show_fig():
+    uid_pointer = [100]
+    def show_fig(fig, save_png=False, delay=3.2, output_dir="output/"):
+        """
+        Compile the plotly figure `fig` into an html file. Optionally, also
+        use the web browser to render and save a png.
+        """
+        uid_pointer[0] += 1
+        uid = uid_pointer[0]
+        if not os.path.exists(output_dir):
+            os.mkdir(output_dir)
+        filename = os.path.join(output_dir, "out{}.html".format(uid))
+        imgname = os.path.join(output_dir, "out{}.png".format(uid))
+        if not save_png:
+            py.plot(fig, filename=filename)
+        else:
+            py.plot(fig, filename=filename, image='png', image_filename=imgname,
+                image_width=1400, image_height=750)
+            if delay is not None:
+                time.sleep(delay)
+    return show_fig
+show_fig = _make_show_fig()
 
 def show_plot(data, title=None, xtitle=None, ytitle=None, **kwargs):
     layout = go.Layout(title=title, xaxis=dict(title=xtitle),
