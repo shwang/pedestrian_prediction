@@ -69,18 +69,33 @@ class MDP(object):
     def transition(self, s, a):
         return self.transition_cached[s, a]
 
-    def q_values(self, goal_state, goal_stuck=False, **kwargs):
+    def q_values(self, goal_spec, goal_stuck=False, **kwargs):
+        """
+        Calculate the hardmax Q values for each state action pair.
+
+        Params:
+            goal_spec: A hashable parameter that indicates which states are goal
+                states. The format is subclass-dependent (see q_values).
+                At goal states, the agent is allowed to
+                choose a 0-cost ABSORB action. The goal state's value is 0.
+            goal_stuck [bool]: If True, then force the agent to take the ABSORB
+                action if it is at a goal state.
+        """
         raise Exception("Abstract method")
 
-    def action_probabilities(self, goal, beta=1, q_cached=None,
+    def action_probabilities(self, goal_spec, beta=1, q_cached=None,
             goal_stuck=False, **kwargs):
         """
         At each state, calculate the softmax probability of each action
         using hardmax Q values.
 
         Params:
-            goal_state [int]: The goal state, where the agent is allowed to
+            goal_spec: A hashable parameter that indicates which states are goal
+                states. The format is subclass-dependent (see q_values).
+                At goal states, the agent is allowed to
                 choose a 0-cost ABSORB action. The goal state's value is 0.
+            goal_stuck [bool]: If True, then force the agent to take the ABSORB
+                action if it is at a goal state.
         Returns:
             P [np.ndarray]: An S x A matrix where the (s, a) entry is the
                 probability that a beta-irrational agent will choose action `a`
@@ -88,14 +103,14 @@ class MDP(object):
         """
         assert beta > 0, beta
 
-        key = (goal, beta, goal_stuck)
+        key = (goal_spec, beta, goal_stuck)
 
         if q_cached is not None:
             Q = np.copy(q_cached)
         else:
             if key in self.act_prob_cache:
                 return np.copy(self.act_prob_cache[key])
-            Q = self.q_values(goal, goal_stuck=goal_stuck, **kwargs)
+            Q = self.q_values(goal_spec, goal_stuck=goal_stuck, **kwargs)
 
         np.divide(Q, beta, out=Q)
         # Use amax to mitigate numerical errors
@@ -107,23 +122,28 @@ class MDP(object):
         self.act_prob_cache[key] = np.copy(Q)
         return Q
 
-    def transition_probabilities(self, goal, beta=1, goal_stuck=False,
+
+    def transition_probabilities(self, goal_spec, beta=1, goal_stuck=False,
             act_probs_cached=None):
         """
         Calculate the SxS state probability transition matrix `T` for a
         beta-irrational agent.
+
         Params:
-        goal [int]: The goal state, used to compute action probabilities. (Note
-            this parameter goal becomes irrelevant if act_probs_caches is
-            passed in.)
+            goal_spec: A hashable parameter that indicates which states are goal
+                states. The format is subclass-dependent (see q_values).
+                At goal states, the agent is allowed to
+                choose a 0-cost ABSORB action. The goal state's value is 0.
+            goal_stuck [bool]: If True, then force the agent to take the ABSORB
+                action if it is at a goal state.
         """
         assert beta > 0, beta
-        key = (goal, beta, goal_stuck)
+        key = (goal_spec, beta, goal_stuck)
 
         if act_probs_cached is None:
             if key in self.trans_prob_cache:
                 return self.trans_prob_cache[key]
-            P = self.action_probabilities(goal, beta=beta, q_cached=None,
+            P = self.action_probabilities(goal_spec, beta=beta, q_cached=None,
                     goal_stuck=goal_stuck)
         else:
             P = act_probs_cached
@@ -139,16 +159,18 @@ class MDP(object):
         self.trans_prob_cache[key] = np.copy(T)
         return T
 
-    def trajectory_probability(self, goal, traj, beta=1,
+    def trajectory_probability(self, goal_spec, traj, beta=1,
             cached_act_probs=None):
         """
         Calculate the product of the probabilities of each
         state-action pair in this trajectory given an mdp,
-        a goal_state, and beta.
+        a goal_spec, and beta.
 
         Params:
-            goal [int]: The goal state. At the goal state, the agent
-                always chooses the ABSORB action at no cost.
+            goal_spec: A hashable parameter that indicates which states are goal
+                states. The format is subclass-dependent (see q_values).
+                At goal states, the agent is allowed to
+                choose a 0-cost ABSORB action. The goal state's value is 0.
             traj [list of (int, int)]: A list of state-action pairs. If this
                 is an empty list, return traj_prob=1.
             beta [float] (optional): Irrationality constant.
@@ -161,7 +183,7 @@ class MDP(object):
             return 1
 
         if cached_act_probs is None:
-            P = self.action_probabilities(goal, beta=beta)
+            P = self.action_probabilities(goal_spec, beta=beta)
         else:
             P = cached_act_probs
 

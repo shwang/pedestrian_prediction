@@ -89,7 +89,7 @@ def gradient_ascent(g, traj, goal, *args, **kwargs):
     kwargs["compute_grad"] = compute_grad
     return shared.gradient_ascent(g, traj, goal, *args, **kwargs)
 
-def calc_posterior_over_set(g, traj, goal, betas, priors=None, k=None):
+def calc_posterior_over_set(g, traj, goal_spec, betas, priors=None, k=None):
     assert betas is not None
     if priors is None:
         priors = np.ones(len(betas))
@@ -102,7 +102,7 @@ def calc_posterior_over_set(g, traj, goal, betas, priors=None, k=None):
 
     P_beta = np.copy(priors)
     for i, beta in enumerate(betas):
-        P_beta[i] *= g.trajectory_probability(goal, traj=traj,
+        P_beta[i] *= g.trajectory_probability(goal_spec, traj=traj,
                 beta=beta)
     np.divide(P_beta, np.sum(P_beta), out=P_beta)
 

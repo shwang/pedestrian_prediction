@@ -122,9 +122,9 @@ class TestTransitionProb(TestCase):
         goal = coor(4, 0)
         s_bad, s, s_prime = coor(1, 0), coor(2, 0), coor(3, 0)
 
-        M_1 = g.transition_probabilities(goal=goal, beta=1)
+        M_1 = g.transition_probabilities(goal_spec=goal, beta=1)
         self.assertEqual(M_1.shape, (g.S, g.S))
-        M_2 = g.transition_probabilities(goal=goal, beta=2)
+        M_2 = g.transition_probabilities(goal_spec=goal, beta=2)
         self.assertEqual(M_2.shape, (g.S, g.S))
 
         self.assertGreater(M_1[s_prime, s], M_2[s_prime, s])
@@ -135,9 +135,9 @@ class TestTransitionProb(TestCase):
         coor = g.coor_to_state
         s_left, s, s_right = coor(1, 0), coor(2, 0), coor(3, 0)
 
-        M_left = g.transition_probabilities(goal=coor(1,0))
+        M_left = g.transition_probabilities(goal_spec=coor(1,0))
         self.assertEqual(M_left.shape, (g.S, g.S))
-        M_right = g.transition_probabilities(goal=coor(4,0))
+        M_right = g.transition_probabilities(goal_spec=coor(4,0))
         self.assertEqual(M_right.shape, (g.S, g.S))
 
         self.assertGreater(M_left[s_left, s], M_right[s_left, s])

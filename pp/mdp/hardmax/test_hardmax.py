@@ -85,7 +85,7 @@ class TestActionProbabilities(TestCase):
     def test_goal_state_forces_absorb(self):
         g = self.g
         s = g.coor_to_state(3, 3)
-        P = self.g.action_probabilities(goal=s, goal_stuck=True)
+        P = self.g.action_probabilities(goal_spec=s, goal_stuck=True)
 
         a = g.Actions.UP
 
@@ -94,7 +94,7 @@ class TestActionProbabilities(TestCase):
     def test_goal_state_allows_nonabsorb(self):
         g = self.g
         s = g.coor_to_state(3, 3)
-        P = self.g.action_probabilities(goal=s)
+        P = self.g.action_probabilities(goal_spec=s)
 
         a = g.Actions.UP
 
@@ -126,7 +126,7 @@ class TestTransitionProbabilities(TestCase):
         g = GridWorldMDP(5,5)
 
         act_probs = np.zeros([g.S, g.A])
-        res = g.transition_probabilities(goal=4, act_probs_cached=act_probs)
+        res = g.transition_probabilities(goal_spec=4, act_probs_cached=act_probs)
         expect = np.zeros([g.S, g.S])
 
         t.assert_equal(res, expect)
@@ -142,7 +142,7 @@ class TestTransitionProbabilities(TestCase):
         act_probs[s, g.Actions.RIGHT] = 0.5
         act_probs[s, g.Actions.UP] = 0.5
 
-        res = g.transition_probabilities(goal=4, act_probs_cached=act_probs)
+        res = g.transition_probabilities(goal_spec=4, act_probs_cached=act_probs)
         expect = np.zeros([g.S, g.S])
 
         expect[s_right, s] = 0.5
@@ -170,5 +170,5 @@ class TestTransitionProbabilities(TestCase):
         M[C, D] = 1
         M[D, A] = 1
 
-        res = g.transition_probabilities(act_probs_cached=P, goal=0)
+        res = g.transition_probabilities(act_probs_cached=P, goal_spec=0)
         t.assert_allclose(res, expect)

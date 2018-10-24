@@ -168,40 +168,41 @@ class GridWorldMDP(MDP2D):
     def _transition_helper(self, s, a, alert_illegal=False):
         return transition_helper(self, s, a, alert_illegal=alert_illegal)
 
-    def q_values(self, goal_state, forwards_value_iter=_value_iter,
+    def q_values(self, goal_spec, forwards_value_iter=_value_iter,
             goal_stuck=False):
         """
         Calculate the hardmax Q values for each state action pair.
+        For GridWorldMDPs, the goal_spec is simply the goal state.
 
         Params:
-            goal_state [int]: The goal state, where the agent is allowed to
+            goal_spec [int]: The goal state, where the agent is allowed to
                 choose a 0-cost ABSORB action. The goal state's value is 0.
             goal_stuck [bool]: If this is True, then all actions other than
-                ABSORB are illegal in the goal_state.
+                ABSORB are illegal in the goal state.
 
         Returns:
             Q [np.ndarray]: An SxA array containing the q values
                 corresponding to each (s, a) pair.
         """
-        if (goal_state, goal_stuck) in self.q_cache:
-            return np.copy(self.q_cache[(goal_state, goal_stuck)])
+        if (goal_spec, goal_stuck) in self.q_cache:
+            return np.copy(self.q_cache[(goal_spec, goal_stuck)])
 
-        V = forwards_value_iter(self, goal_state)
+        V = forwards_value_iter(self, goal_spec)
 
         Q = np.empty([self.S, self.A])
         Q.fill(-np.inf)
         for s in range(self.S):
-            if s == goal_state and goal_stuck:
+            if s == goal_spec and goal_stuck:
                 Q[s, Actions.ABSORB] = 0
                 # All other actions will be -np.inf by default.
                 continue
 
             for a in range(self.A):
-                if s == goal_state and a == Actions.ABSORB:
+                if s == goal_spec and a == Actions.ABSORB:
                     Q[s, a] = 0
                 else:
                     Q[s,a] = self.rewards[s,a] + V[self.transition(s,a)]
         assert Q.shape == (self.S, self.A)
 
-        self.q_cache[(goal_state, goal_stuck)] = Q
+        self.q_cache[(goal_spec, goal_stuck)] = Q
         return np.copy(Q)

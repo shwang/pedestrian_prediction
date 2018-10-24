@@ -130,8 +130,8 @@ def infer_bayes(g, dest, T, betas, traj=[], init_state=None, priors=None,
         init_state = g.transition(*traj[-1])
 
     assert betas is not None
-    P_beta = bt.calc_posterior_over_set(g, traj=traj, goal=dest, betas=betas,
-            k=k, priors=priors)
+    P_beta = bt.calc_posterior_over_set(g, traj=traj, goal_spec=dest,
+            betas=betas, k=k, priors=priors)
 
     occ_all = np.empty([len(betas), T+1, g.S])
     occ_res = np.zeros([T+1, g.S])
@@ -157,7 +157,7 @@ def infer_simple(g, init_state, dest, T, beta=1, action_prob=None,
     """
     assert init_state is not None
     M = g.transition_probabilities(beta=beta, act_probs_cached=action_prob,
-            goal=dest)
+            goal_spec=dest)
 
     P_t = np.zeros([T+1, g.S])
     P_t[0][init_state] = 1
