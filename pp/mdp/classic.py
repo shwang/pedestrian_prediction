@@ -59,8 +59,71 @@ def transition_helper(g, s, a, alert_illegal=False):
     else:
         return s_prime
 
+
+# TODO: rename this class into GridWorldMDP and rename GridWorldMDP to
+# GridWorldMDPClassic.
+class MDP2D(MDP):
+    def __init__(self, rows, cols, A, reward_dict={}, **kwargs):
+        """
+        Superclass for GridWorldMDP and GridWorldExpanded.
+
+        Params:
+            rows [int]: The number of rows.
+            cols [int]: The number of columns.
+            A [int]: The number of actions.
+
+        Debug Params (mainly used in unittests):
+            reward_dict [dict]: Maps state `s_new` to reward `R`. Passing in a
+                nonempty dict for this parameter will make any legal
+                state-action pair that transitions to `s_new` yield the reward
+                `R`.
+        """
+        assert rows > 0
+        assert cols > 0
+        assert isinstance(rows, int)
+        assert isinstance(cols, int)
+
+        # TODO: Rename rows=> X and rename cols=> Y. The current naming
+        # convention is confusing.
+        self.rows = rows
+        self.cols = cols
+        S = rows * cols
+
+        # Convert from coordinates to state number as required by super-class
+        reward_dict = {self.coor_to_state(x, y): R
+                for (x, y), R in reward_dict.items()}
+
+        MDP.__init__(self, S=S, A=A, reward_dict=reward_dict, **kwargs)
+
+
+    def coor_to_state(self, r, c):
+        """
+        Params:
+            r [int]: The state's row.
+            c [int]: The state's column.
+
+        Returns:
+            s [int]: The state number associated with the given coordinates in
+                a standard grid world.
+        """
+        assert 0 <= r < self.rows, "invalid (rows, r)={}".format((self.rows, r))
+        assert 0 <= c < self.cols, "invalid (cols, c)={}".format((self.cols, c))
+        return r * self.cols + c
+
+    def state_to_coor(self, s):
+        """
+        Params:
+            s [int]: The state.
+
+        Returns:
+            r, c [int]: The row and column associated with state s.
+        """
+        assert s < self.rows * self.cols
+        return s // self.cols, s % self.cols
+
+
 # Classic Gridworld
-class GridWorldMDP(MDP):
+class GridWorldMDP(MDP2D):
     Actions = Actions
 
     def __init__(self, rows, cols, goal_state=None, euclidean_rewards=True,
@@ -86,10 +149,9 @@ class GridWorldMDP(MDP):
             assert isinstance(goal_state, int)
 
         self.allow_wait = allow_wait
-        MDP.__init__(self, rows=rows, cols=cols, A=len(Actions),
-                transition_helper=self._transition_helper, **kwargs)
 
-        S, A = self.S, self.A
+        MDP2D.__init__(self, rows=rows, cols=cols, A=len(Actions),
+                transition_helper=self._transition_helper, **kwargs)
 
         if euclidean_rewards:
             for a in diagonal_actions:

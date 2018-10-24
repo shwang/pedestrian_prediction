@@ -1,8 +1,7 @@
 from __future__ import division
 
 import numpy as np
-from .mdp import MDP
-from .classic import GridWorldMDP, transition_helper
+from .classic import GridWorldMDP, transition_helper, MDP2D
 import gridless
 from enum import IntEnum
 
@@ -35,11 +34,12 @@ def build_action_map():
     return m
 action_map = build_action_map()
 
-class GridWorldExpanded(MDP):
+
+class GridWorldExpanded(MDP2D):
     Actions = Actions
 
     def __init__(self, rows, cols, **kwargs):
-        MDP.__init__(self, rows=rows, cols=cols, A=len(Actions),
+        MDP2D.__init__(self, rows=rows, cols=cols, A=len(Actions),
                 transition_helper=self._transition_helper,
                 default_reward=np.nan, **kwargs)
 

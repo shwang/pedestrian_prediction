@@ -5,32 +5,34 @@ from sklearn.preprocessing import normalize
 
 # Abstract Class -- implement Q values
 class MDP(object):
-    def __init__(self, rows, cols, A, transition_helper, reward_dict={},
+    def __init__(self, S, A, transition_helper, reward_dict={},
             default_reward=-1):
         """
+        A generic MDP with a discrete and finite state and action spaces.
+
         Params:
-            rows [int]: The number of rows in the grid world.
-            cols [int]: The number of columns in the grid world.
             S [int]: The number of states.
             A [int]: The number of actions.
             transition_helper [function]: The state transition function for the
-                deterministic MDP. transition(s, a) returns the state that
-                results from taking action a at state s.
-                Actually, also has more requirements used for caching, no time
-                to write that documentation right now.
-            reward_dict [dict]: Maps (r, c) to _reward. In the GridWorldMDP,
-                transitioning to (r, c) will grant the reward _reward.
+                deterministic MDP. transition_helper(s, a, alert_illegal=True)
+                returns the state `s_new`
+                that results from taking action a at state s, and whether this
+                state-action pair represents an illegal move.
+            default_reward [int]: The default reward of any state-action pair
+                (s, a). This is reward yielded by any legal state-action pair
+                that is unaffected by reward_dict.
+
+        Debug Params (mainly used in unittests):
+            reward_dict [dict]: Maps state `s_new` to reward `R`. Passing in a
+                nonempty dict for this parameter will make any legal
+                state-action pair that transitions to `s_new` yield the reward
+                `R`.
         """
+        assert isinstance(S, int), S
         assert isinstance(A, int), A
         assert callable(transition_helper), transition_helper
-        assert rows > 0
-        assert cols > 0
-        assert isinstance(rows, int)
-        assert isinstance(cols, int)
 
-        self.S = S = rows * cols
-        self.rows = self.width = rows
-        self.cols = self.height = cols
+        self.S = S
         self.A = A
 
         self.default_reward = default_reward
@@ -54,10 +56,9 @@ class MDP(object):
                 s_prime, illegal = transition_helper(s, a, alert_illegal=True)
                 self.transition_cached[s, a] = s_prime
                 self.transition_cached_l[a + s*A] = s_prime
-                coor = self.state_to_coor(s_prime)
                 if not illegal:
-                    if coor in reward_dict:
-                        self.rewards[s, a] = reward_dict[coor]
+                    if s_prime in reward_dict:
+                        self.rewards[s, a] = reward_dict[s_prime]
                     self.neighbors[s].append((a, s_prime))
                     self.reverse_neighbors[s_prime].append((a, s))
                 else:
@@ -68,33 +69,6 @@ class MDP(object):
 
     def transition(self, s, a):
         return self.transition_cached[s, a]
-
-    # TODO: cache all these values, because `self.*` is costly.
-    def coor_to_state(self, r, c):
-        """
-        Params:
-            r [int]: The state's row.
-            c [int]: The state's column.
-
-        Returns:
-            s [int]: The state number associated with the given coordinates in
-                a standard grid world.
-        """
-        assert 0 <= r < self.rows, "invalid (rows, r)={}".format((self.rows, r))
-        assert 0 <= c < self.cols, "invalid (cols, c)={}".format((self.cols, c))
-        return r * self.cols + c
-
-    # TODO: cache all these values, because `self.*` is costly.
-    def state_to_coor(self, s):
-        """
-        Params:
-            s [int]: The state.
-
-        Returns:
-            r, c [int]: The row and column associated with state s.
-        """
-        assert s < self.rows * self.cols
-        return s // self.cols, s % self.cols
 
     def set_goal(self, goal):
         self.goal = goal
