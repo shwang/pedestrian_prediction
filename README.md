@@ -13,4 +13,3 @@ pip install -e .
   * `pp.inference`: Algorithms for inferring destinations, occupancies, and states given a GridWorld, a list of destinations, and the pedestrian's trajectory so far.
   * `pp.util`: Utilities for parsing and trajectory manipulation.
   * `pp.plots`: Plot simulated trajectories, overlayed with heatmaps of predicted states. Produce some test plots by executing `python -m pp.plot`. (Requires plotly)
-  * `pp.experiments`: Experiments evaluating pros/cons of estimating Boltzmann rationality coefficient in a simple, single-goal setting. More information in the directory's README.
