@@ -94,6 +94,7 @@ class MDP2D(MDP):
                 for (x, y), R in reward_dict.items()}
 
         MDP.__init__(self, S=S, A=A, reward_dict=reward_dict, **kwargs)
+        self.q_cache = {}
 
 
     def coor_to_state(self, r, c):
@@ -158,32 +159,14 @@ class GridWorldMDP(MDP2D):
                 col = self.rewards[:, a]
                 np.multiply(col, np.sqrt(2), out=col)
 
-        self.set_goal(goal_state)
-
-    # XXX: optimize so that we don't need to convert between state and coor.
-    def _transition_helper(self, s, a, alert_illegal=False):
-        return transition_helper(self, s, a, alert_illegal=alert_illegal)
-
-    def set_goal(self, goal_state):
-        """
-        Reconfigure the goal state in this GridWorldMDP by allowing an agent at
-        the goal state to use the ABSORB action at no cost.
-
-        If self.allow_wait is True, then at nongoal states, ABSORB has
-        half the `default_reward` cost.
-        If self.allow_wait is False, then at nongoal states,
-        ABSORB will be illegal (i.e., incur inf cost).
-
-        Params:
-            goal_state: The new goal. Overrides previous goals.
-        """
-        self.goal = goal_state
         if self.allow_wait:
             self.rewards[:, Actions.ABSORB].fill(self.default_reward)
         else:
             self.rewards[:, Actions.ABSORB].fill(-np.inf)
-        if goal_state != None:
-            self.rewards[goal_state, Actions.ABSORB] = 0
+
+    # XXX: optimize so that we don't need to convert between state and coor.
+    def _transition_helper(self, s, a, alert_illegal=False):
+        return transition_helper(self, s, a, alert_illegal=alert_illegal)
 
     def q_values(self, goal_state, forwards_value_iter=_value_iter,
             goal_stuck=False):
@@ -203,24 +186,21 @@ class GridWorldMDP(MDP2D):
         if (goal_state, goal_stuck) in self.q_cache:
             return np.copy(self.q_cache[(goal_state, goal_stuck)])
 
-        self.set_goal(goal_state)
         V = forwards_value_iter(self, goal_state)
 
         Q = np.empty([self.S, self.A])
         Q.fill(-np.inf)
         for s in range(self.S):
-            if s == goal_state:
+            if s == goal_state and goal_stuck:
                 Q[s, Actions.ABSORB] = 0
-                if goal_stuck:
-                    continue
-            # TODO:
-            # For the purposes of Jaime/Andrea's demo, I am allowing non-ABSORB
-            # actions at the goal.
-            #
-            # My simulations might break if human moves off this square.
-            # This is something worth thinking about. XXX
+                # All other actions will be -np.inf by default.
+                continue
+
             for a in range(self.A):
-                Q[s,a] = self.rewards[s,a] + V[self.transition(s,a)]
+                if s == goal_state and a == Actions.ABSORB:
+                    Q[s, a] = 0
+                else:
+                    Q[s,a] = self.rewards[s,a] + V[self.transition(s,a)]
         assert Q.shape == (self.S, self.A)
 
         self.q_cache[(goal_state, goal_stuck)] = Q

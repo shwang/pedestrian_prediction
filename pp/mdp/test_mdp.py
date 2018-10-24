@@ -115,8 +115,6 @@ class TestGridWorldMDP(TestCase):
                 reward_dict={(0, 0): -1, (0, 1): 1, (1, 1): 2, (1, 0): 3},
                 euclidean_rewards=False)
         self.assert_reward(g, 0, 0, Actions.ABSORB, ni)
-        g.set_goal(0)
-        self.assert_reward(g, 0, 0, Actions.ABSORB, 0)
         self.assert_reward(g, 0, 0, Actions.UP, 1)
         self.assert_reward(g, 0, 0, Actions.UP_RIGHT, 2)
         self.assert_reward(g, 0, 0, Actions.RIGHT, 3)

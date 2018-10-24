@@ -156,8 +156,8 @@ def infer_simple(g, init_state, dest, T, beta=1, action_prob=None,
     as a 2D array of dimension (T+1, g.S).
     """
     assert init_state is not None
-    g.set_goal(dest)
-    M = g.transition_probabilities(beta=beta, act_probs_cached=action_prob)
+    M = g.transition_probabilities(beta=beta, act_probs_cached=action_prob,
+            goal=dest)
 
     P_t = np.zeros([T+1, g.S])
     P_t[0][init_state] = 1

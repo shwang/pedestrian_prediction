@@ -41,7 +41,6 @@ class MDP(object):
 
         self.act_prob_cache = {}
         self.trans_prob_cache = {}
-        self.q_cache = {}
 
         # neighbor[s] is a set of tuples (a, s_prime)
         self.neighbors = [[] for _ in xrange(S)]
@@ -69,9 +68,6 @@ class MDP(object):
 
     def transition(self, s, a):
         return self.transition_cached[s, a]
-
-    def set_goal(self, goal):
-        self.goal = goal
 
     def q_values(self, goal_state, goal_stuck=False, **kwargs):
         raise Exception("Abstract method")
@@ -111,24 +107,23 @@ class MDP(object):
         self.act_prob_cache[key] = np.copy(Q)
         return Q
 
-    def transition_probabilities(self, beta=1, goal=None, goal_stuck=False,
+    def transition_probabilities(self, goal, beta=1, goal_stuck=False,
             act_probs_cached=None):
         """
         Calculate the SxS state probability transition matrix `T` for a
         beta-irrational agent.
         Params:
-        goal [int]: If provided, switch the MDP's goal to this state first.
-            Otherwise, use the MDP's most recent goal.
+        goal [int]: The goal state, used to compute action probabilities. (Note
+            this parameter goal becomes irrelevant if act_probs_caches is
+            passed in.)
         """
         assert beta > 0, beta
-        if goal is not None:
-            self.set_goal(goal)
-        key = (self.goal, beta, goal_stuck)
+        key = (goal, beta, goal_stuck)
 
         if act_probs_cached is None:
             if key in self.trans_prob_cache:
                 return self.trans_prob_cache[key]
-            P = self.action_probabilities(self.goal, beta=beta, q_cached=None,
+            P = self.action_probabilities(goal, beta=beta, q_cached=None,
                     goal_stuck=goal_stuck)
         else:
             P = act_probs_cached

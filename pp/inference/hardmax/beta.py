@@ -100,7 +100,6 @@ def calc_posterior_over_set(g, traj, goal, betas, priors=None, k=None):
         assert k > 0
         traj = traj[-k:]
 
-    g.set_goal(goal)
     P_beta = np.copy(priors)
     for i, beta in enumerate(betas):
         P_beta[i] *= g.trajectory_probability(goal, traj=traj,

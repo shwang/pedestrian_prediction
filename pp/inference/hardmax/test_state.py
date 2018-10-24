@@ -97,7 +97,6 @@ class TestInferBayesBeta(TestCase):
 class TestInferFromStart(TestCase):
     def test_base_case(self):
         mdp = GridWorldMDP(3, 3, euclidean_rewards=True)
-        mdp.set_goal(4)
         D = np.zeros(9)
         D[0] = 1
         t.assert_allclose(D, infer_from_start(mdp, 0, 3, T=0,

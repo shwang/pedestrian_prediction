@@ -124,17 +124,15 @@ class TestTransitionProbabilities(TestCase):
 
     def test_empty(self):
         g = GridWorldMDP(5,5)
-        g.set_goal(4)  # meaningless, a vestigal necessity for now. XXX
 
         act_probs = np.zeros([g.S, g.A])
-        res = g.transition_probabilities(act_probs_cached=act_probs)
+        res = g.transition_probabilities(goal=4, act_probs_cached=act_probs)
         expect = np.zeros([g.S, g.S])
 
         t.assert_equal(res, expect)
 
     def test_simple(self):
         g = GridWorldMDP(5,5)
-        g.set_goal(4)
 
         s = g.coor_to_state(0, 0)
         s_right = g.coor_to_state(1, 0)
@@ -144,7 +142,7 @@ class TestTransitionProbabilities(TestCase):
         act_probs[s, g.Actions.RIGHT] = 0.5
         act_probs[s, g.Actions.UP] = 0.5
 
-        res = g.transition_probabilities(act_probs_cached=act_probs)
+        res = g.transition_probabilities(goal=4, act_probs_cached=act_probs)
         expect = np.zeros([g.S, g.S])
 
         expect[s_right, s] = 0.5
@@ -172,5 +170,5 @@ class TestTransitionProbabilities(TestCase):
         M[C, D] = 1
         M[D, A] = 1
 
-        res = g.transition_probabilities(act_probs_cached=P)
+        res = g.transition_probabilities(act_probs_cached=P, goal=0)
         t.assert_allclose(res, expect)
