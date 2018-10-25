@@ -1,2 +1,1 @@
 import hardmax
-import softmax

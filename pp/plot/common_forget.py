@@ -1,7 +1,6 @@
 import numpy as np
 
 from ..mdp import GridWorldMDP
-from ..inference.softmax.destination import infer_destination
 from ..util import build_traj_from_actions
 from ..util.args import unpack_opt_list
 from ..parameters import inf_default
