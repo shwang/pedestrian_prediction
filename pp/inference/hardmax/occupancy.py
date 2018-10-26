@@ -52,14 +52,7 @@ def infer_joint(*args, **kwargs):
             the `b`th entry is the posterior probability associated with
             `betas[b]`.
     """
-    occ_res, occ_all, P_joint_DB = state.infer_joint(*args, verbose_return=True,
-            **kwargs)
-
-    D = np.sum(occ_res[1:], axis=0)
-    D[dest] = 1  # This value is fixed.
-
-    return D, occ_res, occ_all, P_beta
-
+    raise NotImplementedError
 
 def infer_from_start(g, init_state, dest_or_dests, dest_probs=None,
         T=None, verbose=False, beta_or_betas=1, cached_action_probs=None,
@@ -181,19 +174,3 @@ def infer(g, traj, dest_or_dests, T=None, verbose=False, beta_or_betas=None,
 
     return infer_from_start(g, s_b, dest_list, dest_probs=dest_probs,
             T=T, verbose=verbose, beta_or_betas=betas, **kwargs)
-
-
-def _main():
-    from mdp import GridWorldMDP
-    from util import display
-    N = 50
-    default_reward = -5
-    g = GridWorldMDP(N, N, default_reward=default_reward, euclidean_rewards=True)
-    for beta in [1, 2, 3, 4]:
-        print("Expected occupancies for beta={}").format(beta)
-        D = infer_from_start(g, 0, N*N-1, T=N, beta=beta).reshape(N, N)
-        print(D)
-
-
-if __name__ == '__main__':
-    _main()

@@ -21,7 +21,11 @@ def infer_joint(g, dests, betas, T, use_gridless=False, traj=[],
 
     Params:
         g [GridWorldMDP or GridWorldExpanded]: The MDP.
-        dests [list of ints]: The states that are possible destinations.
+        dests [list of goal_specs]: The goal_specs that represent possible
+            destinations. In the case of GridWorldMDP and GridWorldExpanded
+            each goal_spec is a state number `s` such that `0 <= s < g.s`.
+            In the case of a CarWorld, each goal_spec is an tuple of 2 integers
+            (x, y).
         betas [list of floats]: The possible rationality constants.
         T [int]: The number of timesteps to predict into the future.
         use_gridless [bool]: If True, then the required format for the `traj`
@@ -97,7 +101,7 @@ def infer_joint(g, dests, betas, T, use_gridless=False, traj=[],
 
     weighted = np.multiply(occ_all, P_joint_DB.reshape(n_D, n_B, 1, 1))
     # occ_res = np.add(occ_res, occ_all[i,j] * P_joint_DB[i, j], out=occ_res)
-    occ_res = np.sum(np.sum(weighted, axis=0), axis=0)
+    occ_res = np.sum(np.sum(weighted, axis=0), axis=0, out=occ_res)
     assert occ_res.shape == (T+1, g.S)
 
     if verbose_return:
@@ -255,8 +259,12 @@ def infer(g, traj, dest_or_dests, T=None, verbose=False, beta_or_betas=None,
     g [GridWorldMDP] -- The agent's MDP.
     traj [list of (int, int)] -- A list of state-action pairs describing the
         agent's trajectory.
-    dest_or_dests [int or np.ndarray]: A single destination, or a list of
-        possible destinations.
+    dest_or_dests [goal_spec or list of goal_specs]: A single goal_spec, or a
+        list of possible destinations.
+        1. In the case of GridWorldMDP and GridWorldExpanded,
+        each goal_spec is a state number `s` such that `0 <= s < g.s`.
+        2. In the case of a CarWorld, each goal_spec is an tuple of 2 integers
+        (x, y).
     T [int]: The number of timesteps to predict into the future.
     beta_or_betas [int or np.ndarray] (optional): A fixed beta, or a list of
         betas corresponding to each destination. If not provided, then
@@ -271,7 +279,16 @@ def infer(g, traj, dest_or_dests, T=None, verbose=False, beta_or_betas=None,
         the MLE beta and calculated destination probabilities.
 
     Returns:
-        See the documentation for `infer_from_start`.
+        If `verbose_return` is False, returns `P`, a 1D array with the state
+        probabilities for the Tth timestep. (with dimension mdp.S)
+
+        If `verbose_return` is True, then returns (P, betas, dest_probs).
+        P [np.ndarray] -- the state probabilities for timesteps 0,1,...,T in a
+            2D array (with dimension (T+1) x mdp.S).
+        betas [np.ndarray]-- a 1D array which contains the beta associated with
+            each destination.
+        dest_probs [np.ndarray]-- a 1D array which contains the probability of
+            each destination being the true destination.
     """
     assert len(traj) > 0, traj
     s_b = g.transition(*traj[-1])
