@@ -115,6 +115,9 @@ class MDP(object):
         np.divide(Q, beta, out=Q)
         # Use amax to mitigate numerical errors
         amax = np.amax(Q, axis=1, keepdims=1)
+        if np.any(np.isneginf(amax)):
+            print("Warning: There are states without any legal actions")
+            amax[np.isneginf(amax)] = 0
         np.subtract(Q, amax, out=Q)
 
         np.exp(Q, out=Q)
