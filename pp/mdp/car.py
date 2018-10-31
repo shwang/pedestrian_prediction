@@ -209,6 +209,49 @@ class CarMDP(MDP):
         Return:
         Q [np.ndarray([S, A]) -- The Q values of each state action pair.
         """
+
+        # TODO:
+        # Use value iteration instead, like in mdp/classic.py:q_values()
+        # Note that value iteration depends on self.rewards, an array
+        # containing the immediate reward of each state-action pair.
+        #
+        # You can find the definition of rewards in mdp/mdp.py:39.
+        #
+        # I think we can't directly use mdp/hardmax/hardmax.py:forwards_value_iter()
+        # for the following reason. Our new problem formulation might expect
+        # multiple goal states. However, forwards_value_iter expects a single
+        # goal state.
+        # -- Therefore, we need to edit this line of _value_iter() so that we
+        #   can initialize multiple state values to 0:
+        # ```
+        # pq.put((0, s))
+        # ```
+        #
+
+        # TODO:
+        # Update goal_spec so that we can specify angles. Right now, goal_spec
+        # only specifies (x, y). Modifying goal_spec would require a change to
+        # self.is_goal(goal_spec).
+
+        # INFO:
+        # To perform occupancy inference from the trajectory-so-far, we call
+        # `infer_joint(mdp, dests, betas, T, use_gridless=False,
+        # verbose_return=True, priors=dest_beta_prob...)` as usual.
+        #
+        # Note that, as described in the `infer_joint` documentation, `dests`
+        # here will no longer be a list of state numbers, but instead a list of
+        # `goal_spec` tuples.
+        #
+        # Note that since our input trajectories now take the form of
+        # state-action pairs
+        # instead of (x, y) coordinates, we set `use_gridless=False`.
+        #
+        # I saw that in crazyflie_human/src/human_pred.py, #OPTION2 (recursive
+        # update) inputs traj=traj[-2:]. I believe that if we want to use a
+        # recursive update for `infer_joint`, we will use `traj=traj[-1:]`.
+        # Since a single state-action pair [(s, a)] describes a pair of
+        # positions [(x1, y1), (x2, y2)].
+
         if (goal_spec, goal_stuck) in self.q_cache:
             return np.copy(self.q_cache[(goal_spec, goal_stuck)])
 
