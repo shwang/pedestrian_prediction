@@ -1,19 +1,27 @@
 from __future__ import division
 
 import numpy as np
-from .mdp import MDP
+from pp.mdp.mdp import MDP
 from enum import IntEnum
+from pp.mdp.hardmax import hardmax
 
 class Actions(IntEnum):
     FORWARD = 0
-    FORWARD_CCW = 1
-    FORWARD_CW = 2
-    ABSORB = 3
+    FORWARD_CCW1 = 1
+    FORWARD_CCW2 = 2
+    FORWARD_CCW3 = 3
+    FORWARD_CW1 = 4
+    FORWARD_CW2 = 5
+    FORWARD_CW3 = 6
+    ABSORB = 7
+
+# An integer between 1 and T//2 inclusive.
+MAX_ANGLE_CHANGE = 3
 
 class CarMDP(MDP):
     Actions = Actions
 
-    def __init__(self, X, Y, T, vel=1.0, allow_wait=True, **kwargs):
+    def __init__(self, X, Y, T, goals, dt=0.1, vel=1.0, allow_wait=True, obstacle_list=None, **kwargs):
         """
         Params:
             X [int] -- The width of this MDP.
@@ -21,6 +29,8 @@ class CarMDP(MDP):
             T [int] -- The number of different angles, uniformly spaced,
                 allowed in this MDP. It's recommended for T to be a power of 2
                 (avoid asymmetries) and to be at least 4.
+            goals [list] -- A list of real-world goals (x,y,t) where t is theta. 
+            dt [float] -- Timestep for discrete-time car dynamics. 
             vel [float] -- The arc length traveled, provided that the action
                 involves changing position (x, y). `vel` is in units of
                 gridsquares per timestep. It's recommended that `vel` is at
@@ -28,18 +38,9 @@ class CarMDP(MDP):
             allow_wait [bool] -- If this is True, then ABSORB is allowed on
                 at every state. If this is False, then ABSORB is illegal except
                 on goal states.
-        """
-
-        # TODO: Future param suggestion:
-        """
-        Right now the we can only increment the angle `t` coordinate by +/- 1
-        every timestep. (With FORWARD_CW and FORWARD_CCW actions; this
-        corresponds to increasing or decreasing the angle by 2*pi/T). Maybe we
-        want to increase the number of turning actions.
-
-        Future Param:
-        max_angle_change [int] -- An integer between 1 and T//2 inclusive.
-            This MDP will have 2*max_angle_change turning actions.
+            obstacle_list [list] -- List of axis-aligned 2D boxes that represent
+                obstacles in the envrionment. Specified in real coords:
+                [((lower_x, lower_y), (upper_x, upper_y)), (...)]
         """
 
         if not allow_wait:
@@ -60,11 +61,17 @@ class CarMDP(MDP):
         self.X = X
         self.Y = Y
         self.T = T
+        self.dt = dt
         self.vel = vel
         self.allow_wait = allow_wait
         S = X * Y * T
 
-        self.q_cache = {}
+        # Compute maximum angular velocity based on the max angle change
+        # and timestep.
+        # self.max_angle_vel = MAX_ANGLE_CHANGE*(2*np.pi/self.T)/self.dt
+
+        self.obstacle_list = obstacle_list
+        self.goal_list = goals
 
         # Intentionally set default_reward to nan here. The idea is that we
         # shouldn't be looking at the self.reward method and instead rely
@@ -73,6 +80,25 @@ class CarMDP(MDP):
                 transition_helper=self._transition_helper,
                 default_reward=np.nan, **kwargs)
 
+        # Overwrite the default reward with the custom reward based on 
+        # obstacles in environment. 
+        for state in range(S):
+            if self.is_blocked(state):
+                self.rewards[state,:] = -np.inf
+
+        # Compute values at each state for each goal.
+        self.value_dict = {}
+        for (x,y,t) in self.goal_list:
+            goal_state = self.real_to_state(x,y,t)
+            self.value_dict[goal_state] = hardmax._value_iter(self, goal_state, True)
+
+        # Map from goal to Q-values.
+        self.q_cache_dict = {}
+
+        # Compute the Q-values for all the goals upon construction. 
+        for (x,y,t) in self.goal_list:
+            goal_coor = self.real_to_coor(x,y,t)
+            self.q_cache_dict[goal_coor] = self.q_values(goal_coor, goal_stuck=True)
 
     def _transition_helper_real(self, x, y, t, a):
         """
@@ -102,17 +128,26 @@ class CarMDP(MDP):
         if a == Actions.ABSORB:
             return x, y, t
         elif a == Actions.FORWARD:
-            x_new = x + self.vel * np.cos(t)
-            y_new = y + self.vel * np.sin(t)
-            t_new = t
+            x_new = x + self.dt * self.vel * np.cos(t)
+            y_new = y + self.dt * self.vel * np.sin(t)
+            t_new = t*self.dt
         else:
-            if a == Actions.FORWARD_CCW:
-                ang_vel = 2*np.pi/self.T
-            if a == Actions.FORWARD_CW:
-                ang_vel = -2*np.pi/self.T
-            x_new = x + self.vel/ang_vel * (np.sin(t + ang_vel) - np.sin(t))
-            y_new = y - self.vel/ang_vel * (np.cos(t + ang_vel) - np.cos(t))
-            t_new = (t + ang_vel) % (2*np.pi)
+            if a == Actions.FORWARD_CCW1:
+                ang_vel = (2*np.pi/self.T)/self.dt
+            if a == Actions.FORWARD_CCW2:
+                ang_vel = 2*(2*np.pi/self.T)/self.dt
+            if a == Actions.FORWARD_CCW3:
+                ang_vel = 3*(2*np.pi/self.T)/self.dt
+            if a == Actions.FORWARD_CW1:
+                ang_vel = -(2*np.pi/self.T)/self.dt
+            if a == Actions.FORWARD_CW2:
+                ang_vel = -2*(2*np.pi/self.T)/self.dt
+            if a == Actions.FORWARD_CW3:
+                ang_vel = -3*(2*np.pi/self.T)/self.dt
+
+            x_new = x + self.dt * self.vel/ang_vel * (np.sin(t + ang_vel) - np.sin(t))
+            y_new = y - self.dt * self.vel/ang_vel * (np.cos(t + ang_vel) - np.cos(t))
+            t_new = (t + ang_vel * self.dt) % (2*np.pi)
         return x_new, y_new, t_new
 
     def _transition_helper(self, s, a, alert_illegal=False):
@@ -129,54 +164,6 @@ class CarMDP(MDP):
             illegal = True
         return s, illegal
 
-
-    def score(self, gx, gy, gt, sx, sy, st):
-        """
-        This is the function used to calculate the Q-value of state-action
-        pairs that don't have the special status of BLOCKED or GOAL.
-
-        Right now this function just returns the negative squared Euclidean
-        distance between the positions of the two states. Their angles are not
-        considered.
-
-        gx, gy [float] -- The continuous position coordinates of the goal.
-        gt [float] -- The continuous angle of the goal, in radians. CURRENTLY
-            UNUSED.
-        sx, sy [float] -- The position coordinates of the transition state
-            The transition state is the state that results from the state-action
-            pair whose Q value we are calculating.
-        st [float] -- The continuous angle of the transition state.
-            The transition state is the state that results from the state-action
-            pair whose Q value we are calculating. CURRENTLY UNUSED.
-        """
-        # TODO: We could imagine incorporating the angle into this score
-        # function. Also note that MDPs with blocking tiles will have nontrivial
-        # Q_values for each state, which probably require some planning to
-        # calculate.
-        return -((gx - sx)**2 + (gy - sy)**2)
-
-
-    def is_goal(self, s, goal_spec):
-        """
-        Return whether s is a goal state.
-
-        Params:
-        goal_spec [tuple(int, int)] -- The (x, y) coordinates of the goal.
-
-        Return:
-        True iff the position coordinate of goal_spec matches the position of s.
-        """
-        goal_x, goal_y = goal_spec
-        x, y, t = self.state_to_coor(s)
-
-        assert 0 <= goal_x < self.X
-        assert 0 <= goal_y < self.Y
-        assert isinstance(goal_x, int)
-        assert isinstance(goal_y, int)
-
-        return (x, y) == (goal_x, goal_y)
-
-
     def is_blocked(self, s):
         """
         Returns True if s is blocked.
@@ -185,9 +172,17 @@ class CarMDP(MDP):
         Rewards are undefined for state-action pairs starting from blocked
         states.
         """
-        # TODO
-        return False
+        if self.obstacle_list is None:
+            return False
 
+        # Check against internal representation of boxes. 
+        sx, sy, _ = self.state_to_real(s)
+        for box in self.obstacle_list:
+            if sx >= box[0][0] and sx <= box[1][0] and \
+               sy >= box[0][1] and sy <= box[1][1]:
+                return True
+
+        return False
 
     def q_values(self, goal_spec, goal_stuck=True):
         """
@@ -199,7 +194,7 @@ class CarMDP(MDP):
         Behavior is undefined if any goal state is blocked.
 
         Param:
-        goal_spec [tuple(int, int)] -- The (x, y) coordinates of the goal. An
+        goal_spec [tuple(int, int, int)] -- A list of (x, y, t) coordinates of the goals. An
             AssertionError will fire if these coordinates are invalid.
             At goal states, the agent is allowed to
             choose a 0-cost ABSORB action.
@@ -207,31 +202,36 @@ class CarMDP(MDP):
             making all other actions worth -infinity.
 
         Return:
-        Q [np.ndarray([S, A]) -- The Q values of each state action pair.
+        Q [np.ndarray([S, A])] -- The Q values of each state action pair.
         """
 
-        # TODO:
-        # Use value iteration instead, like in mdp/classic.py:q_values()
-        # Note that value iteration depends on self.rewards, an array
-        # containing the immediate reward of each state-action pair.
-        #
-        # You can find the definition of rewards in mdp/mdp.py:39.
-        #
-        # I think we can't directly use mdp/hardmax/hardmax.py:forwards_value_iter()
-        # for the following reason. Our new problem formulation might expect
-        # multiple goal states. However, forwards_value_iter expects a single
-        # goal state.
-        # -- Therefore, we need to edit this line of _value_iter() so that we
-        #   can initialize multiple state values to 0:
-        # ```
-        # pq.put((0, s))
-        # ```
-        #
+        # Check if you have already computed the Q-values for this goal.
+        if goal_spec not in self.q_cache_dict:
+            self.q_cache_dict[goal_spec] = np.array([self.S, self.A])
+            values = self.value_dict[goal_spec]
 
-        # TODO:
-        # Update goal_spec so that we can specify angles. Right now, goal_spec
-        # only specifies (x, y). Modifying goal_spec would require a change to
-        # self.is_goal(goal_spec).
+            for s in range(self.S):
+                # Get the (x,y,t) tuple for this state.
+                coor = self.state_to_coor(s)
+                for a in range(self.A):
+                    if coor == goal_spec:
+                        reward = 0
+                    else:
+                        reward = self.rewards[s][a]
+                    next_s, illegal = self._transition_helper(s, a, alert_illegal=True)
+                    if illegal:
+                        self.q_cache_dict[goal_spec][s,a] = -np.inf
+                    else:
+                        self.q_cache_dict[goal_spec][s,a] = reward + values[next_s]
+
+                # If True, then force ABSORB action at the goal by
+                # making all other actions worth -infinity.
+                if goal_stuck and coor == goal_spec:
+                    q_stay = self.q_cache_dict[goal_spec][s,actions.ABSORB]
+                    self.q_cache_dict[goal_spec][s,:] = -np.inf
+                    self.q_cache_dict[goal_spec][s,actions.ABSORB] = q_stay
+
+        return self.q_cache_dict[goal_spec]
 
         # INFO:
         # To perform occupancy inference from the trajectory-so-far, we call
@@ -251,51 +251,6 @@ class CarMDP(MDP):
         # recursive update for `infer_joint`, we will use `traj=traj[-1:]`.
         # Since a single state-action pair [(s, a)] describes a pair of
         # positions [(x1, y1), (x2, y2)].
-
-        if (goal_spec, goal_stuck) in self.q_cache:
-            return np.copy(self.q_cache[(goal_spec, goal_stuck)])
-
-        Q = np.empty([self.S, self.A])
-        Q.fill(-np.inf)
-        for s in range(self.S):
-            # Easy case: If already at goal, then we just force ABSORB action.
-            at_goal = self.is_goal(s, goal_spec)
-
-            if at_goal:
-                Q[s, Actions.ABSORB] = 0
-                if goal_stuck:
-                    # All other actions will be by default -inf.
-                    continue
-
-            # Convert goal spec to real coordinates for use by score function.
-            gx, gy = goal_spec
-            gx += 0.5
-            gy += 0.5
-            gt = 0
-
-            for a in range(self.A):
-                sx, sy, st = self.state_to_real(s)
-                illegal = False
-                try:
-                    sx_new, sy_new, st_new = self._transition_helper_real(
-                            sx, sy, st, a)
-                    s_new = self.real_to_state(sx_new, sy_new, st_new)
-                except ValueError:
-                    # Illegal transition
-                    illegal = True
-
-                if illegal or self.is_blocked(s_new):
-                    Q[s, a] = -np.inf
-                elif (a == Actions.ABSORB and not at_goal
-                        and not self.allow_wait):
-                    Q[s, a] = -np.inf
-                elif at_goal and a == Actions.ABSORB:
-                    Q[s, a] = 0
-                else:
-                    Q[s, a] = self.score(gx, gy, gt, sx, sy, st)
-
-        self.q_cache[(goal_spec, goal_stuck)] = Q
-        return np.copy(Q)
 
 
     #################################
@@ -347,18 +302,19 @@ class CarMDP(MDP):
         If no such state exists, raise a ValueError.
 
         Params:
-        x, y [int or float] -- The discrete x, y coordinates of the state.
-        t [int] -- The discrete angle coordinate.
+        x, y, t [int or float] -- The discrete x, y, t coordinates of the state.
 
         Returns:
         s [int] -- The state.
         """
 
-        x, y = int(x), int(y)
+        x, y, t = int(x), int(y), int(t)
         if not(0 <= x < self.X):
             raise ValueError(x, self.X)
         if not (0 <= y < self.Y):
             raise ValueError(y, self.Y)
+        if not (0 <= t < self.T):
+            raise ValueError(t, self.T)
 
         assert isinstance(t, int)
         assert 0 <= t < self.T
