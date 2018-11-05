@@ -24,8 +24,8 @@ def infer_joint(g, dests, betas, T, use_gridless=False, traj=[],
         dests [list of goal_specs]: The goal_specs that represent possible
             destinations. In the case of GridWorldMDP and GridWorldExpanded
             each goal_spec is a state number `s` such that `0 <= s < g.s`.
-            In the case of a CarWorld, each goal_spec is an tuple of 2 integers
-            (x, y).
+            In the case of a CarWorld, each goal_spec is an tuple of 3 integers
+            (x, y, theta).
         betas [list of floats]: The possible rationality constants.
         T [int]: The number of timesteps to predict into the future.
         use_gridless [bool]: If True, then the required format for the `traj`

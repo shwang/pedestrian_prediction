@@ -21,7 +21,7 @@ MAX_ANGLE_CHANGE = 3
 class CarMDP(MDP):
     Actions = Actions
 
-    def __init__(self, X, Y, T, goals, dt=0.1, vel=1.0, allow_wait=True, obstacle_list=None, **kwargs):
+    def __init__(self, X, Y, T, goals, real_lower, dt=0.1, vel=1.0, res=0.1, allow_wait=True, obstacle_list=None, **kwargs):
         """
         Params:
             X [int] -- The width of this MDP.
@@ -30,11 +30,16 @@ class CarMDP(MDP):
                 allowed in this MDP. It's recommended for T to be a power of 2
                 (avoid asymmetries) and to be at least 4.
             goals [list] -- A list of real-world goals (x,y,t) where t is theta. 
+            real_lower [list(x_low, y_low, theta_low)] -- Lower bounds of the real-world 
+                environment. Used for real-to-sim conversions.
             dt [float] -- Timestep for discrete-time car dynamics. 
             vel [float] -- The arc length traveled, provided that the action
                 involves changing position (x, y). `vel` is in units of
                 gridsquares per timestep. It's recommended that `vel` is at
                 least 1.
+            res [float] -- X,Y resolution for converting from real to sim coord.
+                Computed by (real meters)/(sim dim-1) (m/cell). NOTE: assumes
+                that the gridworld X,Y is a square.
             allow_wait [bool] -- If this is True, then ABSORB is allowed on
                 at every state. If this is False, then ABSORB is illegal except
                 on goal states.
@@ -63,8 +68,16 @@ class CarMDP(MDP):
         self.T = T
         self.dt = dt
         self.vel = vel
+        self.res = res
+        self.real_lower = real_lower
         self.allow_wait = allow_wait
         S = X * Y * T
+
+        print "------ Car MDP ------"
+        print "num X : ", self.X
+        print "num Y : ", self.Y
+        print "num theta : ", self.T
+        print "---------------------"
 
         # Compute maximum angular velocity based on the max angle change
         # and timestep.
@@ -72,13 +85,14 @@ class CarMDP(MDP):
 
         self.obstacle_list = obstacle_list
         self.goal_list = goals
+        self.default_reward = -1
 
         # Intentionally set default_reward to nan here. The idea is that we
         # shouldn't be looking at the self.reward method and instead rely
         # entirely on self.score for determining q_values.
         MDP.__init__(self, S=S, A=len(Actions),
                 transition_helper=self._transition_helper,
-                default_reward=np.nan, **kwargs)
+                default_reward=self.default_reward, **kwargs)
 
         # Overwrite the default reward with the custom reward based on 
         # obstacles in environment. 
@@ -86,14 +100,19 @@ class CarMDP(MDP):
             if self.is_blocked(state):
                 self.rewards[state,:] = -np.inf
 
-        # Compute values at each state for each goal.
+        # Map from goal to value. 
+        # Keys are coor representations of goals.
         self.value_dict = {}
-        for (x,y,t) in self.goal_list:
-            goal_state = self.real_to_state(x,y,t)
-            self.value_dict[goal_state] = hardmax._value_iter(self, goal_state, True)
-
+        
         # Map from goal to Q-values.
+        # Keys are coor representations of goals.
         self.q_cache_dict = {}
+
+        # Compute the values for each goal
+        for (x,y,t) in self.goal_list:
+            goal_coor = self.real_to_coor(x,y,t)
+            goal_state = self.real_to_state(x,y,t)
+            self.value_dict[goal_coor] = hardmax._value_iter(self, goal_state, True)
 
         # Compute the Q-values for all the goals upon construction. 
         for (x,y,t) in self.goal_list:
@@ -130,7 +149,7 @@ class CarMDP(MDP):
         elif a == Actions.FORWARD:
             x_new = x + self.dt * self.vel * np.cos(t)
             y_new = y + self.dt * self.vel * np.sin(t)
-            t_new = t*self.dt
+            t_new = t 
         else:
             if a == Actions.FORWARD_CCW1:
                 ang_vel = (2*np.pi/self.T)/self.dt
@@ -145,8 +164,8 @@ class CarMDP(MDP):
             if a == Actions.FORWARD_CW3:
                 ang_vel = -3*(2*np.pi/self.T)/self.dt
 
-            x_new = x + self.dt * self.vel/ang_vel * (np.sin(t + ang_vel) - np.sin(t))
-            y_new = y - self.dt * self.vel/ang_vel * (np.cos(t + ang_vel) - np.cos(t))
+            x_new = x + self.vel/ang_vel * (np.sin(t + ang_vel*self.dt) - np.sin(t))
+            y_new = y - self.vel/ang_vel * (np.cos(t + ang_vel*self.dt) - np.cos(t))
             t_new = (t + ang_vel * self.dt) % (2*np.pi)
         return x_new, y_new, t_new
 
@@ -163,6 +182,46 @@ class CarMDP(MDP):
         except ValueError:  # Assumption: ValueError iff action is illegal.
             illegal = True
         return s, illegal
+
+    def real_to_action(self, real_prev, real_next):
+        """
+        Inverts dynamics to determine what action was applied to move from
+        real_prev to real_next state. 
+
+        Params:
+        real_prev [tuple(float, float, float)] -- The real (x, y, theta) 
+            coordinates of previous state.
+        real_next [tuple(float, float, float)] -- The real (x, y, theta) 
+            coordinates of next state.
+
+        Return:
+        Action taken to go from real_prev to real_next.
+        """
+        prev_arr = np.array(real_prev)
+        next_arr = np.array(real_next)
+
+        if np.abs(prev_arr - next_arr).all() < 1e-08:
+            # if no change between two states, action is ABSORB
+            return Actions.ABSORB
+        if np.abs(prev_arr[2] - next_arr[2]) < 1e-08:
+            # if no change in the angle, action is FORWARD
+            return Actions.FORWARD
+        else:
+            u = (next_arr[2] - prev_arr[2])/self.dt
+
+            fwdccw1 = (2*np.pi/self.T)/self.dt
+            if np.abs(u - fwdccw1) < 1e-08: 
+                return Actions.FORWARD_CCW1
+            if np.abs(u - 2*fwdccw1) < 1e-08: 
+                return Actions.FORWARD_CCW2 
+            if np.abs(u - 3*fwdccw1) < 1e-08: 
+                return Actions.FORWARD_CCW3 
+            if np.abs(u + fwdccw1) < 1e-08:
+                return Actions.FORWARD_CW1
+            if np.abs(u + 2*fwdccw1) < 1e-08: 
+                return Actions.FORWARD_CW2
+            if np.abs(u + 3*fwdccw1) < 1e-08: 
+                return Actions.FORWARD_CW3
 
     def is_blocked(self, s):
         """
@@ -183,6 +242,29 @@ class CarMDP(MDP):
                 return True
 
         return False
+
+    def is_goal(self, s, goal_spec):
+        """
+        Return whether s is a goal state.
+
+        Params:
+        goal_spec [tuple(int, int, int)] -- The (x, y, theta) coordinates of the goal.
+
+        Return:
+        True iff the position coordinate of goal_spec matches the position of s.
+        """
+        print "goal spec: ", goal_spec
+        goal_x, goal_y, goal_t = goal_spec
+        x, y, t = self.state_to_coor(s)
+
+        assert 0 <= goal_x < self.X
+        assert 0 <= goal_y < self.Y
+        assert 0 <= goal_t < self.T
+        assert isinstance(goal_x, int)
+        assert isinstance(goal_y, int)
+        assert isinstance(goal_t, int)
+
+        return (x, y, t) == (goal_x, goal_y, goal_t)
 
     def q_values(self, goal_spec, goal_stuck=True):
         """
@@ -205,9 +287,12 @@ class CarMDP(MDP):
         Q [np.ndarray([S, A])] -- The Q values of each state action pair.
         """
 
+        assert len(goal_spec) == 3
+
         # Check if you have already computed the Q-values for this goal.
         if goal_spec not in self.q_cache_dict:
-            self.q_cache_dict[goal_spec] = np.array([self.S, self.A])
+            self.q_cache_dict[goal_spec] = np.zeros([self.S, self.A])
+            print self.value_dict.keys()
             values = self.value_dict[goal_spec]
 
             for s in range(self.S):
@@ -227,9 +312,9 @@ class CarMDP(MDP):
                 # If True, then force ABSORB action at the goal by
                 # making all other actions worth -infinity.
                 if goal_stuck and coor == goal_spec:
-                    q_stay = self.q_cache_dict[goal_spec][s,actions.ABSORB]
+                    q_stay = self.q_cache_dict[goal_spec][s,Actions.ABSORB]
                     self.q_cache_dict[goal_spec][s,:] = -np.inf
-                    self.q_cache_dict[goal_spec][s,actions.ABSORB] = q_stay
+                    self.q_cache_dict[goal_spec][s,Actions.ABSORB] = q_stay
 
         return self.q_cache_dict[goal_spec]
 
@@ -251,7 +336,6 @@ class CarMDP(MDP):
         # recursive update for `infer_joint`, we will use `traj=traj[-1:]`.
         # Since a single state-action pair [(s, a)] describes a pair of
         # positions [(x1, y1), (x2, y2)].
-
 
     #################################
     # Conversion functions
@@ -345,7 +429,7 @@ class CarMDP(MDP):
         x_dis, y_dis, t_dis = self.real_to_coor(x, y, t)
         return self.coor_to_state(x_dis, y_dis, t_dis)
 
-    def real_to_coor(self, x, y, t, tol=1e-5):
+    def real_to_coor(self, x, y, t, tol=None):
         """
         Project real coordinates onto discrete state space.
 
@@ -362,7 +446,7 @@ class CarMDP(MDP):
                 raise ValueError("Invalid angle: t={}".format(t))
                 int(round(4.9))
 
-        x_dis, y_dis = int(x), int(y)
+        x_dis, y_dis = int((x - self.real_lower[0])/self.res), int((y - self.real_lower[1])/self.res)
         t_dis = int(round(t / increment))
 
         assert 0 <= t_dis < self.T, t_dis
@@ -371,7 +455,7 @@ class CarMDP(MDP):
         if not (0 <= y_dis < self.Y):
             raise ValueError(y_dis, self.Y)
 
-        return int(x), int(y), t_dis
+        return x_dis, y_dis, t_dis
 
     def coor_to_real(self, x, y, t):
         """
@@ -381,7 +465,7 @@ class CarMDP(MDP):
         assert 0 <= y < self.Y
         assert 0 <= t < self.T
 
-        x_real, y_real = x+0.5, y+0.5
+        x_real, y_real = (x+0.5)*self.res, (y+0.5)*self.res
         theta_increment = 2*np.pi / self.T
         theta = theta_increment * t
         return x_real, y_real, theta
