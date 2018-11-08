@@ -99,11 +99,10 @@ class CarMDP(MDP):
                 transition_helper=self._transition_helper,
                 default_reward=self.default_reward, **kwargs)
 
-        # Overwrite the default reward with the custom reward based on 
-        # obstacles in environment. 
-        #for state in range(S):
-        #    if self.is_blocked(state):
-        #        self.rewards[state,:] = -np.inf
+        # Overwrite the default reward for the actions that should cost 
+        # sqrt(2) instead of -1.
+        self.rewards[:,Actions.FORWARD_CCW1] = -np.sqrt(2)
+        self.rewards[:,Actions.FORWARD_CW1] = -np.sqrt(2)
 
         # Map from goal to value. 
         # Keys are coor representations of goals.
