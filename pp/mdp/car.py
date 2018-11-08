@@ -7,21 +7,24 @@ from pp.mdp.hardmax import hardmax
 
 class Actions(IntEnum):
     FORWARD = 0
-    FORWARD_CCW1 = 1
-    FORWARD_CCW2 = 2
-    FORWARD_CCW3 = 3
-    FORWARD_CW1 = 4
-    FORWARD_CW2 = 5
-    FORWARD_CW3 = 6
-    ABSORB = 7
+    FORWARD_CW1 = 1
+    FORWARD_CCW1 = 2
+    ABSORB = 3
 
-# An integer between 1 and T//2 inclusive.
-MAX_ANGLE_CHANGE = 3
+    #FORWARD = 0
+    #FORWARD_CCW1 = 1
+    #FORWARD_CCW2 = 2
+    #FORWARD_CCW3 = 3
+    #FORWARD_CW1 = 4
+    #FORWARD_CW2 = 5
+    #FORWARD_CW3 = 6
+    #ABSORB = 7
 
 class CarMDP(MDP):
     Actions = Actions
 
-    def __init__(self, X, Y, T, goals, real_lower, dt=0.1, vel=1.0, res=0.1, allow_wait=True, obstacle_list=None, **kwargs):
+    def __init__(self, X, Y, T, goals, real_lower, dt=0.1, vel=1.0, \
+        res_x=0.1, res_y=0.1, allow_wait=True, obstacle_list=None, **kwargs):
         """
         Params:
             X [int] -- The width of this MDP.
@@ -37,15 +40,16 @@ class CarMDP(MDP):
                 involves changing position (x, y). `vel` is in units of
                 gridsquares per timestep. It's recommended that `vel` is at
                 least 1.
-            res [float] -- X,Y resolution for converting from real to sim coord.
-                Computed by (real meters)/(sim dim-1) (m/cell). NOTE: assumes
-                that the gridworld X,Y is a square.
+            res_x [float] -- X resolution for converting from real to sim coord.
+                Computed by (real meters x)/(sim dim x) (m/cell).
+            res_y [float] -- Y resolution for converting from real to sim coord.
+                Computed by (real meters y)/(sim dim y) (m/cell). 
             allow_wait [bool] -- If this is True, then ABSORB is allowed on
                 at every state. If this is False, then ABSORB is illegal except
                 on goal states.
             obstacle_list [list] -- List of axis-aligned 2D boxes that represent
                 obstacles in the envrionment. Specified in real coords:
-                [((lower_x, lower_y), (upper_x, upper_y)), (...)]
+                [[(lower_x, lower_y), (upper_x, upper_y)], [...]]
         """
 
         if not allow_wait:
@@ -68,7 +72,8 @@ class CarMDP(MDP):
         self.T = T
         self.dt = dt
         self.vel = vel
-        self.res = res
+        self.res_x = res_x
+        self.res_y = res_y
         self.real_lower = real_lower
         self.allow_wait = allow_wait
         S = X * Y * T
@@ -96,9 +101,9 @@ class CarMDP(MDP):
 
         # Overwrite the default reward with the custom reward based on 
         # obstacles in environment. 
-        for state in range(S):
-            if self.is_blocked(state):
-                self.rewards[state,:] = -np.inf
+        #for state in range(S):
+        #    if self.is_blocked(state):
+        #        self.rewards[state,:] = -np.inf
 
         # Map from goal to value. 
         # Keys are coor representations of goals.
@@ -153,20 +158,25 @@ class CarMDP(MDP):
         else:
             if a == Actions.FORWARD_CCW1:
                 ang_vel = (2*np.pi/self.T)/self.dt
-            if a == Actions.FORWARD_CCW2:
-                ang_vel = 2*(2*np.pi/self.T)/self.dt
-            if a == Actions.FORWARD_CCW3:
-                ang_vel = 3*(2*np.pi/self.T)/self.dt
+            #if a == Actions.FORWARD_CCW2:
+            #    ang_vel = 2*(2*np.pi/self.T)/self.dt
+            #if a == Actions.FORWARD_CCW3:
+            #    ang_vel = 3*(2*np.pi/self.T)/self.dt
             if a == Actions.FORWARD_CW1:
                 ang_vel = -(2*np.pi/self.T)/self.dt
-            if a == Actions.FORWARD_CW2:
-                ang_vel = -2*(2*np.pi/self.T)/self.dt
-            if a == Actions.FORWARD_CW3:
-                ang_vel = -3*(2*np.pi/self.T)/self.dt
+            #if a == Actions.FORWARD_CW2:
+            #    ang_vel = -2*(2*np.pi/self.T)/self.dt
+            #if a == Actions.FORWARD_CW3:
+            #    ang_vel = -3*(2*np.pi/self.T)/self.dt
 
             x_new = x + self.vel/ang_vel * (np.sin(t + ang_vel*self.dt) - np.sin(t))
             y_new = y - self.vel/ang_vel * (np.cos(t + ang_vel*self.dt) - np.cos(t))
             t_new = (t + ang_vel * self.dt) % (2*np.pi)
+
+        # If the dynamics take me inside an obstacle, action is illegal.
+        s_new = self.real_to_state(x_new, y_new, t_new)
+        if self.is_blocked(s_new):
+            raise ValueError
         return x_new, y_new, t_new
 
     def _transition_helper(self, s, a, alert_illegal=False):
@@ -200,28 +210,37 @@ class CarMDP(MDP):
         prev_arr = np.array(real_prev)
         next_arr = np.array(real_next)
 
-        if np.abs(prev_arr - next_arr).all() < 1e-08:
+        if np.all(np.abs(prev_arr - next_arr) < 1e-08):
             # if no change between two states, action is ABSORB
             return Actions.ABSORB
-        if np.abs(prev_arr[2] - next_arr[2]) < 1e-08:
+        if np.all(np.abs(prev_arr[2] - next_arr[2]) < 1e-08):
             # if no change in the angle, action is FORWARD
             return Actions.FORWARD
         else:
+            # determine which of the binned controls is most like the applied one
             u = (next_arr[2] - prev_arr[2])/self.dt
-
             fwdccw1 = (2*np.pi/self.T)/self.dt
-            if np.abs(u - fwdccw1) < 1e-08: 
-                return Actions.FORWARD_CCW1
-            if np.abs(u - 2*fwdccw1) < 1e-08: 
-                return Actions.FORWARD_CCW2 
-            if np.abs(u - 3*fwdccw1) < 1e-08: 
-                return Actions.FORWARD_CCW3 
-            if np.abs(u + fwdccw1) < 1e-08:
-                return Actions.FORWARD_CW1
-            if np.abs(u + 2*fwdccw1) < 1e-08: 
-                return Actions.FORWARD_CW2
-            if np.abs(u + 3*fwdccw1) < 1e-08: 
-                return Actions.FORWARD_CW3
+
+            # make array of applied control, and binned controls
+            #u_array = np.array([u]*6)
+            #binned_u = np.array([fwdccw1, 2*fwdccw1, 3*fwdccw1, \
+            #    -fwdccw1, -2*fwdccw1, -3*fwdccw1])
+            #action_array = [Actions.FORWARD_CCW1, Actions.FORWARD_CCW2, \
+            #    Actions.FORWARD_CCW3, Actions.FORWARD_CW1, \
+            #    Actions.FORWARD_CW2, Actions.FORWARD_CW3]
+
+            u_array = np.array([u]*2)
+            binned_u = np.array([fwdccw1, -fwdccw1])
+            action_array = [Actions.FORWARD_CCW1, Actions.FORWARD_CW1]
+
+            # look at difference between the applied control and all binned controls
+            diff = np.abs(u_array - binned_u)
+
+            # get the index of min difference
+            min_idx = np.argmin(diff)
+
+            # return the binned action that is most similar to the applied control
+            return action_array[min_idx]
 
     def is_blocked(self, s):
         """
@@ -253,7 +272,6 @@ class CarMDP(MDP):
         Return:
         True iff the position coordinate of goal_spec matches the position of s.
         """
-        print "goal spec: ", goal_spec
         goal_x, goal_y, goal_t = goal_spec
         x, y, t = self.state_to_coor(s)
 
@@ -292,7 +310,6 @@ class CarMDP(MDP):
         # Check if you have already computed the Q-values for this goal.
         if goal_spec not in self.q_cache_dict:
             self.q_cache_dict[goal_spec] = np.zeros([self.S, self.A])
-            print self.value_dict.keys()
             values = self.value_dict[goal_spec]
 
             for s in range(self.S):
@@ -446,7 +463,7 @@ class CarMDP(MDP):
                 raise ValueError("Invalid angle: t={}".format(t))
                 int(round(4.9))
 
-        x_dis, y_dis = int((x - self.real_lower[0])/self.res), int((y - self.real_lower[1])/self.res)
+        x_dis, y_dis = int((x - self.real_lower[0])/self.res_x), int((y - self.real_lower[1])/self.res_y)
         t_dis = int(round(t / increment))
 
         assert 0 <= t_dis < self.T, t_dis
@@ -465,7 +482,7 @@ class CarMDP(MDP):
         assert 0 <= y < self.Y
         assert 0 <= t < self.T
 
-        x_real, y_real = (x+0.5)*self.res, (y+0.5)*self.res
+        x_real, y_real = (x+0.5)*self.res_x, (y+0.5)*self.res_y
         theta_increment = 2*np.pi / self.T
         theta = theta_increment * t
         return x_real, y_real, theta
