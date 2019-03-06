@@ -163,7 +163,7 @@ def hmm_infer(g, traj, dests, epsilon=0.05, beta_guesses=None,
         return P_D, betas
 
 def infer_joint(g, dests, betas, priors=None, traj=[], use_gridless=False,
-    epsilon_dest=0.02, epsilon_beta=0.02, verbose_return=False):
+    epsilon_dest=0.02, epsilon_beta=0.02, multi_human=False, verbose_return=False):
     # Process parameters
     if not use_gridless:
         T = len(traj)
@@ -234,10 +234,30 @@ def infer_joint(g, dests, betas, priors=None, traj=[], use_gridless=False,
             boltzmann = np.empty([n_D, n_B])
             for index_d, d in enumerate(dests):
                 for index_b, b in enumerate(betas):
-                    d_coor = g.state_to_real_coor(d)
-                    boltzmann[index_d, index_b] = gridless.action_probability(
-                            start=s, end=s_prime, dest=d_coor, beta=b,
-                            W=g.rows, H=g.cols)
+                    if multi_human:
+                        d_coor = g.state_to_real_coor(d)
+                        # First human
+                        x = s[0] // g.X
+                        y = s[1] // g.Y
+                        x_prime = s[0] // g.X
+                        y_prime = s[1] // g.Y
+                        boltzmann[index_d, index_b] = gridless.action_probability(
+                                start=[x, y], end=[x_prime, y_prime], dest=d_coor[:2], beta=b,
+                                W=g.rows, H=g.cols)
+
+                        # Second human
+                        x = s[0] % g.X
+                        y = s[1] % g.Y
+                        x_prime = s[0] % g.X
+                        y_prime = s[1] % g.Y
+                        boltzmann[index_d, index_b] *= gridless.action_probability(
+                                start=[x, y], end=[x_prime, y_prime], dest=d_coor[2:], beta=b,
+                                W=g.rows, H=g.cols)
+                    else:
+                        d_coor = g.state_to_real_coor(d)
+                        boltzmann[index_d, index_b] = gridless.action_probability(
+                                start=s, end=s_prime, dest=d_coor, beta=b,
+                                W=g.rows, H=g.cols)
         else:
             s, a = emission
             boltzmann = np.empty([n_D, n_B])
@@ -245,7 +265,6 @@ def infer_joint(g, dests, betas, priors=None, traj=[], use_gridless=False,
                 for index_b, b in enumerate(betas):
                     boltzmann[index_d, index_b] = g.action_probabilities(
                             goal_spec=d, beta=b)[s, a]
-
 
 
         # Apply time update to "smooth out" dest and beta distributions

@@ -5,6 +5,7 @@ import destination
 import beta as bt
 
 from ...mdp import GridWorldExpanded
+from ...mdp import GridWorldExpanded2H 
 
 from ...parameters import val_default
 from ...util.args import unpack_opt_list
@@ -20,7 +21,7 @@ def infer_joint(g, dests, betas, T, use_gridless=False, traj=[],
     `dest` is a member of `dests`, and the observed trajectory `traj`.
 
     Params:
-        g [GridWorldMDP or GridWorldExpanded]: The MDP.
+        g [GridWorldMDP or GridWorldExpanded or GridWorldExpanded2H]: The MDP.
         dests [list of goal_specs]: The goal_specs that represent possible
             destinations. In the case of GridWorldMDP and GridWorldExpanded
             each goal_spec is a state number `s` such that `0 <= s < g.s`.
@@ -73,7 +74,12 @@ def infer_joint(g, dests, betas, T, use_gridless=False, traj=[],
     """
     assert len(traj) > 0 or init_state is not None
     if use_gridless:
-        assert isinstance(g, GridWorldExpanded)
+        if isinstance(g, GridWorldExpanded2H):
+            multi_human = True
+        else:
+            multi_human = False
+            assert isinstance(g, GridWorldExpanded)
+
     if len(traj) > 0:
         if not use_gridless:
             init_state = g.transition(*traj[-1])
@@ -87,7 +93,7 @@ def infer_joint(g, dests, betas, T, use_gridless=False, traj=[],
 
     P_joint_DB = destination.infer_joint(g, dests=dests, betas=betas, traj=traj,
             priors=priors, epsilon_dest=epsilon_dest, epsilon_beta=epsilon_beta,
-            use_gridless=use_gridless, verbose_return=False)
+            use_gridless=use_gridless, multi_human=multi_human, verbose_return=False)
     n_D, n_B = len(dests), len(betas)
     assert P_joint_DB.shape == (n_D, n_B)
 

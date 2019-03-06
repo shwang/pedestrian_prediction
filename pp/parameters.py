@@ -10,13 +10,21 @@ import sys
 
 import mdp.euclid
 import mdp.hardmax
-val_euclid = sys.modules['pp.mdp.euclid']
-val_hardmax = sys.modules['pp.mdp.hardmax']
+
+if 'pp.mdp.euclid' in sys.modules:
+    val_euclid = sys.modules['pp.mdp.euclid']
+else:
+    val_euclid = sys.modules['pedestrian_prediction.pp.mdp.euclid']
+
+if 'pp.mdp.hardmax' in sys.modules:
+    val_hardmax = sys.modules['pp.mdp.hardmax']
+else:
+    val_hardmax = sys.modules['pedestrian_prediction.pp.mdp.hardmax']
+
 val_default = val_hardmax
 
-# Right now, only pp.mdp.classic.GridWorld uses value iteration.
-# The other mdps build q_values without explicitly using reward functions.
-
 import inference.hardmax
-inf_hardmax = sys.modules['pp.inference.hardmax']
-inf_default = inf_hardmax
+if 'pp.inference.hardmax' in sys.modules:
+    inf_default = sys.modules['pp.inference.hardmax']
+else:
+    inf_default = sys.modules['pedestrian_prediction.pp.inference.hardmax']
