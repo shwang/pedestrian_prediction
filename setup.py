@@ -20,6 +20,7 @@ setup(
     packages=['pp'],
     install_requires=[
         'enum34',
+        'plotly',
         'scipy',
         'scikit-learn',
         ],

@@ -114,7 +114,7 @@ def subplots(subplot_list, title_list, shapes_list=[], title=None,
         **kwargs):
     assert len(subplot_list) == len(title_list), (subplot_list, title_list)
 
-    specs=[ [ {'t':top_padding} ]*3 ]
+    specs=[ [ {'t':top_padding} ]*len(subplot_list) ]
 
     fig = tools.make_subplots(rows=1, cols=len(subplot_list),
             subplot_titles=title_list, specs=specs)
